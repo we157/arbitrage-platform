@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Bot V2</title>
+<title>Arbitrage Scanner V2.1</title>
 
 <style>
 *{box-sizing:border-box}
@@ -25,12 +25,14 @@ body{
   gap:12px;
 }
 h1{font-size:28px;margin:10px 0}
+h2{font-size:25px}
 .badge{
   background:#123f30;
   color:#53e7a3;
   padding:12px 18px;
   border-radius:30px;
   font-weight:bold;
+  text-align:center;
 }
 .card{
   margin-top:22px;
@@ -52,10 +54,26 @@ h1{font-size:28px;margin:10px 0}
   border-bottom:1px solid #273954;
 }
 .label{color:#93a4bf}
-.value{font-weight:bold;text-align:right}
+.value{
+  font-weight:bold;
+  text-align:right;
+  overflow-wrap:anywhere;
+}
 .green{color:#4ee29a}
 .red{color:#ff6b81}
 .yellow{color:#ffd166}
+.blue{color:#42bfff}
+
+input{
+  width:100%;
+  padding:15px;
+  font-size:18px;
+  color:white;
+  background:#091426;
+  border:1px solid #344968;
+  border-radius:12px;
+}
+
 button{
   width:100%;
   margin-top:15px;
@@ -70,6 +88,7 @@ button{
 button:disabled{
   background:#41506a;
 }
+
 .log{
   margin-top:15px;
   padding:14px;
@@ -77,205 +96,493 @@ button:disabled{
   border-radius:12px;
   font-family:monospace;
   overflow-wrap:anywhere;
+  line-height:1.5;
 }
 small{color:#71829d}
+.address{
+  font-size:12px;
+  word-break:break-all;
+}
 </style>
 </head>
 
 <body>
+
 <div class="container">
 
 <div class="header">
-  <h1>⚡ Arbitrage Bot</h1>
-  <div class="badge">V2 LIVE DATA</div>
+  <h1>⚡ Arbitrage Scanner</h1>
+  <div class="badge">V2.1<br>LIVE QUOTE</div>
 </div>
 
 <div class="card notice">
-  🔎 Read-only market scanner. No wallet is connected.
-  No token approvals and no cryptocurrency transactions are performed.
+  🔎 Live read-only Base scanner.
+  No wallet is connected. No token approval and no swap transaction
+  will be performed.
 </div>
+
 
 <div class="card">
-  <h2>🌐 Base Network</h2>
 
-  <div class="row">
-    <span class="label">Network</span>
-    <span class="value">Base Mainnet</span>
-  </div>
+<h2>🌐 Base Network</h2>
 
-  <div class="row">
-    <span class="label">Chain ID</span>
-    <span class="value">8453</span>
-  </div>
-
-  <div class="row">
-    <span class="label">Connection</span>
-    <span id="status" class="value yellow">Not tested</span>
-  </div>
-
-  <div class="row">
-    <span class="label">Latest Block</span>
-    <span id="block" class="value">—</span>
-  </div>
-
-  <div class="row">
-    <span class="label">Gas Price</span>
-    <span id="gas" class="value">—</span>
-  </div>
-
-  <div class="row">
-    <span class="label">Last Update</span>
-    <span id="updated" class="value">—</span>
-  </div>
-
-  <button id="testBtn" onclick="testBase()">
-    TEST LIVE BASE CONNECTION
-  </button>
-
-  <div id="log" class="log">
-    Waiting for live blockchain test…
-  </div>
+<div class="row">
+  <span class="label">Network</span>
+  <span class="value">Base Mainnet</span>
 </div>
+
+<div class="row">
+  <span class="label">Chain ID</span>
+  <span class="value">8453</span>
+</div>
+
+<div class="row">
+  <span class="label">RPC</span>
+  <span id="rpcStatus" class="value yellow">Waiting</span>
+</div>
+
+<div class="row">
+  <span class="label">Latest Block</span>
+  <span id="block" class="value">—</span>
+</div>
+
+</div>
+
 
 <div class="card">
-  <h2>🏦 DEX Integration</h2>
 
-  <div class="row">
-    <span class="label">DEX #1</span>
-    <span class="value">Aerodrome</span>
-  </div>
+<h2>🏦 Aerodrome Quote</h2>
 
-  <div class="row">
-    <span class="label">Router</span>
-    <span class="value green">Configured for next step</span>
-  </div>
-
-  <div class="row">
-    <span class="label">Trading</span>
-    <span class="value red">DISABLED</span>
-  </div>
-
-  <p>
-    After the Base connection test succeeds, the next upgrade will
-    request real read-only swap quotes from Aerodrome.
-  </p>
+<div class="row">
+  <span class="label">DEX</span>
+  <span class="value">Aerodrome</span>
 </div>
+
+<div class="row">
+  <span class="label">Pair</span>
+  <span class="value">USDC → WETH</span>
+</div>
+
+<div class="row">
+  <span class="label">Pool Type</span>
+  <span class="value">V2 Volatile</span>
+</div>
+
+<label class="label">Quote size (USDC)</label>
+
+<input
+  id="amount"
+  type="number"
+  value="100"
+  min="1"
+  step="1"
+>
+
+<div class="row">
+  <span class="label">USDC Input</span>
+  <span id="usdcInput" class="value">100.00 USDC</span>
+</div>
+
+<div class="row">
+  <span class="label">Expected WETH</span>
+  <span id="wethOutput" class="value blue">—</span>
+</div>
+
+<div class="row">
+  <span class="label">Effective ETH Price</span>
+  <span id="ethPrice" class="value">—</span>
+</div>
+
+<div class="row">
+  <span class="label">Quote Status</span>
+  <span id="quoteStatus" class="value yellow">NOT REQUESTED</span>
+</div>
+
+<div class="row">
+  <span class="label">Last Quote</span>
+  <span id="updated" class="value">—</span>
+</div>
+
+<button id="quoteBtn">
+GET LIVE AERODROME QUOTE
+</button>
+
+<div id="log" class="log">
+Waiting for live Aerodrome quote…
+</div>
+
+</div>
+
 
 <div class="card">
-  <h2>🛡️ V2 Safety Status</h2>
 
-  <div class="row">
-    <span class="label">Wallet</span>
-    <span class="value">Not connected</span>
-  </div>
+<h2>🔗 Contracts</h2>
 
-  <div class="row">
-    <span class="label">Private key</span>
-    <span class="value">Not required</span>
-  </div>
+<p class="label">USDC</p>
+<p class="address">
+0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+</p>
 
-  <div class="row">
-    <span class="label">Token approval</span>
-    <span class="value">None</span>
-  </div>
+<p class="label">WETH</p>
+<p class="address">
+0x4200000000000000000000000000000000000006
+</p>
 
-  <div class="row">
-    <span class="label">Transactions</span>
-    <span class="value">Disabled</span>
-  </div>
-</div>
-
-<p style="text-align:center;margin:35px 0">
-  <small>Arbitrage Bot V2.0 • Live Blockchain Read Test • No Real Trading</small>
+<p class="label">Aerodrome Router</p>
+<p class="address">
+0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43
 </p>
 
 </div>
 
-<script>
-const RPC = "https://mainnet.base.org";
 
-async function rpc(method, params=[]){
-  const response = await fetch(RPC,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      jsonrpc:"2.0",
-      id:1,
-      method:method,
-      params:params
-    })
-  });
+<div class="card">
 
-  if(!response.ok){
-    throw new Error("HTTP " + response.status);
-  }
+<h2>🛡️ Safety Status</h2>
 
-  const data = await response.json();
+<div class="row">
+  <span class="label">Wallet</span>
+  <span class="value">Not connected</span>
+</div>
 
-  if(data.error){
-    throw new Error(data.error.message);
-  }
+<div class="row">
+  <span class="label">Private key</span>
+  <span class="value">Not required</span>
+</div>
 
-  return data.result;
+<div class="row">
+  <span class="label">Token approval</span>
+  <span class="value">None</span>
+</div>
+
+<div class="row">
+  <span class="label">Transaction</span>
+  <span class="value red">DISABLED</span>
+</div>
+
+<div class="row">
+  <span class="label">Mode</span>
+  <span class="value green">READ ONLY</span>
+</div>
+
+</div>
+
+
+<p style="text-align:center;margin:35px 0">
+<small>
+Arbitrage Scanner V2.1 • Base Mainnet • Quote Only • No Real Trading
+</small>
+</p>
+
+</div>
+
+
+<script type="module">
+
+import {
+  JsonRpcProvider,
+  Contract,
+  formatUnits,
+  parseUnits,
+  ZeroAddress
 }
+from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
 
-async function testBase(){
-  const button=document.getElementById("testBtn");
-  const status=document.getElementById("status");
-  const log=document.getElementById("log");
 
-  button.disabled=true;
-  button.textContent="CONNECTING…";
-  status.textContent="Testing…";
-  status.className="value yellow";
-  log.textContent="Contacting Base mainnet…";
+const RPC =
+"https://mainnet.base.org";
+
+const ROUTER =
+"0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
+
+const USDC =
+"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
+const WETH =
+"0x4200000000000000000000000000000000000006";
+
+
+const ABI = [
+  "function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"
+];
+
+
+const provider =
+new JsonRpcProvider(RPC);
+
+const router =
+new Contract(
+  ROUTER,
+  ABI,
+  provider
+);
+
+
+async function updateNetwork(){
+
+  const status =
+  document.getElementById("rpcStatus");
 
   try{
-    const chainHex=await rpc("eth_chainId");
-    const chainId=parseInt(chainHex,16);
 
-    if(chainId!==8453){
-      throw new Error("Unexpected chain ID: "+chainId);
+    const network =
+    await provider.getNetwork();
+
+    if(Number(network.chainId) !== 8453){
+      throw new Error(
+        "Unexpected Chain ID: " +
+        network.chainId
+      );
     }
 
-    const blockHex=await rpc("eth_blockNumber");
-    const gasHex=await rpc("eth_gasPrice");
+    const block =
+    await provider.getBlockNumber();
 
-    const block=parseInt(blockHex,16);
-    const gasWei=BigInt(gasHex);
-    const gasGwei=Number(gasWei)/1e9;
-
-    document.getElementById("block").textContent=
+    document.getElementById("block")
+      .textContent =
       block.toLocaleString();
 
-    document.getElementById("gas").textContent=
-      gasGwei.toFixed(6)+" Gwei";
+    status.textContent =
+    "LIVE ✓";
 
-    document.getElementById("updated").textContent=
-      new Date().toLocaleTimeString();
+    status.className =
+    "value green";
 
-    status.textContent="LIVE ✓";
-    status.className="value green";
+  }
+  catch(error){
 
-    log.textContent=
-      "SUCCESS: Base mainnet responded correctly. Chain ID = "+
-      chainId+
-      ". Live block and gas data received.";
+    status.textContent =
+    "ERROR";
 
-  }catch(error){
-    status.textContent="CONNECTION ERROR";
-    status.className="value red";
+    status.className =
+    "value red";
 
-    log.textContent=
-      "Connection test failed: "+error.message+
-      ". This does not involve or affect any wallet or funds.";
+    throw error;
+  }
+}
+
+
+async function getQuote(){
+
+  const button =
+  document.getElementById("quoteBtn");
+
+  const status =
+  document.getElementById("quoteStatus");
+
+  const log =
+  document.getElementById("log");
+
+  const amountField =
+  document.getElementById("amount");
+
+  const amount =
+  Number(amountField.value);
+
+
+  if(
+    !Number.isFinite(amount) ||
+    amount <= 0
+  ){
+    log.textContent =
+    "Please enter a valid USDC amount.";
+
+    return;
   }
 
-  button.disabled=false;
-  button.textContent="TEST AGAIN";
+
+  button.disabled = true;
+  button.textContent =
+  "REQUESTING LIVE QUOTE…";
+
+  status.textContent =
+  "REQUESTING…";
+
+  status.className =
+  "value yellow";
+
+  log.textContent =
+  "Reading Aerodrome Router on Base…";
+
+
+  try{
+
+    await updateNetwork();
+
+
+    /*
+      Native USDC uses 6 decimals.
+    */
+
+    const amountIn =
+    parseUnits(
+      amount.toString(),
+      6
+    );
+
+
+    /*
+      Aerodrome Route:
+
+      USDC
+        ↓
+      WETH
+
+      stable = false
+      factory = zero address
+
+      The Router therefore uses
+      its approved default V2 factory.
+    */
+
+    const routes = [
+      {
+        from: USDC,
+        to: WETH,
+        stable: false,
+        factory: ZeroAddress
+      }
+    ];
+
+
+    /*
+      READ-ONLY CALL.
+
+      No transaction is created.
+      No wallet is needed.
+    */
+
+    const amounts =
+    await router.getAmountsOut(
+      amountIn,
+      routes
+    );
+
+
+    const wethRaw =
+    amounts[amounts.length - 1];
+
+    const weth =
+    Number(
+      formatUnits(
+        wethRaw,
+        18
+      )
+    );
+
+
+    if(
+      !Number.isFinite(weth) ||
+      weth <= 0
+    ){
+      throw new Error(
+        "Aerodrome returned zero output. " +
+        "The selected V2 route may not have usable liquidity."
+      );
+    }
+
+
+    const price =
+    amount / weth;
+
+
+    document.getElementById("usdcInput")
+      .textContent =
+      amount.toFixed(2) +
+      " USDC";
+
+
+    document.getElementById("wethOutput")
+      .textContent =
+      weth.toFixed(8) +
+      " WETH";
+
+
+    document.getElementById("ethPrice")
+      .textContent =
+      "$" +
+      price.toLocaleString(
+        undefined,
+        {
+          minimumFractionDigits:2,
+          maximumFractionDigits:2
+        }
+      ) +
+      " / ETH";
+
+
+    document.getElementById("updated")
+      .textContent =
+      new Date()
+      .toLocaleTimeString();
+
+
+    status.textContent =
+    "LIVE QUOTE ✓";
+
+    status.className =
+    "value green";
+
+
+    log.textContent =
+      "SUCCESS: Read-only Aerodrome quote received directly from Base. " +
+      "This is an expected swap output, NOT an executed trade.";
+
+
+  }
+  catch(error){
+
+    status.textContent =
+    "QUOTE ERROR";
+
+    status.className =
+    "value red";
+
+
+    document.getElementById("wethOutput")
+      .textContent =
+      "—";
+
+
+    document.getElementById("ethPrice")
+      .textContent =
+      "—";
+
+
+    log.textContent =
+      "Quote failed: " +
+      error.message +
+      ". No transaction was attempted.";
+
+  }
+
+
+  button.disabled = false;
+
+  button.textContent =
+  "GET LIVE AERODROME QUOTE";
+
 }
+
+
+document
+.getElementById("quoteBtn")
+.addEventListener(
+  "click",
+  getQuote
+);
+
+
+updateNetwork()
+.catch(error => {
+
+  document.getElementById("log")
+    .textContent =
+    "Base connection error: " +
+    error.message;
+
+});
+
 </script>
 
 </body>
