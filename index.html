@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Arbitrage Bot V1</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arbitrage Bot V2</title>
 
 <style>
 *{box-sizing:border-box}
@@ -16,555 +16,267 @@ body{
 .container{
   max-width:850px;
   margin:auto;
-  padding:18px;
+  padding:20px;
 }
 .header{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:18px;
+  gap:12px;
 }
-.logo{
-  font-size:22px;
-  font-weight:800;
-}
+h1{font-size:28px;margin:10px 0}
 .badge{
-  background:#163d2b;
-  color:#64f0a5;
-  padding:7px 11px;
-  border-radius:20px;
-  font-size:12px;
+  background:#123f30;
+  color:#53e7a3;
+  padding:12px 18px;
+  border-radius:30px;
   font-weight:bold;
-}
-.warning{
-  background:#172136;
-  border:1px solid #33415e;
-  padding:12px;
-  border-radius:12px;
-  margin-bottom:16px;
-  font-size:13px;
-  color:#b8c5db;
 }
 .card{
-  background:#101a2b;
-  border:1px solid #25334b;
-  border-radius:16px;
-  padding:16px;
-  margin-bottom:14px;
+  margin-top:22px;
+  padding:22px;
+  background:#111c2f;
+  border:1px solid #2d405f;
+  border-radius:20px;
 }
-.card h3{
-  margin:0 0 14px;
-  font-size:15px;
+.notice{
+  background:#16243b;
+  color:#b9c7dc;
 }
-.grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
+.row{
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  margin:14px 0;
+  padding-bottom:12px;
+  border-bottom:1px solid #273954;
 }
-.box{
-  background:#0b1424;
-  border:1px solid #273550;
-  border-radius:12px;
-  padding:12px;
-}
-.label{
-  color:#8493ab;
-  font-size:12px;
-}
-.value{
-  font-size:19px;
-  font-weight:bold;
-  margin-top:6px;
-}
-.green{color:#49e39a}
-.red{color:#ff7180}
-.blue{color:#6cb8ff}
-input{
-  width:100%;
-  background:#0b1424;
-  border:1px solid #34435f;
-  color:white;
-  padding:12px;
-  border-radius:10px;
-  margin-top:6px;
-  font-size:16px;
-}
+.label{color:#93a4bf}
+.value{font-weight:bold;text-align:right}
+.green{color:#4ee29a}
+.red{color:#ff6b81}
+.yellow{color:#ffd166}
 button{
   width:100%;
-  padding:14px;
+  margin-top:15px;
   border:0;
-  border-radius:11px;
-  font-size:16px;
+  border-radius:14px;
+  padding:18px;
+  font-size:18px;
   font-weight:bold;
-  cursor:pointer;
-}
-.start{
-  background:#18b66d;
+  background:#19bc72;
   color:white;
 }
-.stop{
-  background:#e84c61;
-  color:white;
+button:disabled{
+  background:#41506a;
 }
-.wallet{
-  background:#23324b;
-  color:#9fb0c8;
-  margin-bottom:10px;
-}
-.status{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-.dot{
-  width:9px;
-  height:9px;
-  border-radius:50%;
-  background:#e84c61;
-}
-.dot.active{background:#35dd8c}
-.opportunity{
-  border:1px solid #275c50;
-}
-.route{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:8px;
-  margin-bottom:14px;
-}
-.exchange{
-  flex:1;
-  background:#0b1424;
-  padding:12px;
+.log{
+  margin-top:15px;
+  padding:14px;
+  background:#091426;
   border-radius:12px;
+  font-family:monospace;
+  overflow-wrap:anywhere;
 }
-.exchange small{
-  color:#8594ab;
-}
-.exchange strong{
-  display:block;
-  margin-top:5px;
-}
-.arrow{
-  font-size:22px;
-  color:#6cb8ff;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:12px;
-}
-th,td{
-  padding:10px 5px;
-  border-bottom:1px solid #26334a;
-  text-align:left;
-}
-th{color:#8391a8}
-.footer{
-  text-align:center;
-  color:#63728b;
-  font-size:11px;
-  padding:15px;
-}
-@media(max-width:520px){
-  .grid{grid-template-columns:1fr 1fr}
-  .value{font-size:16px}
-  .container{padding:12px}
-}
+small{color:#71829d}
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
 <div class="header">
-  <div class="logo">⚡ Arbitrage Bot</div>
-  <div class="badge">V1 SIMULATION</div>
+  <h1>⚡ Arbitrage Bot</h1>
+  <div class="badge">V2 LIVE DATA</div>
 </div>
 
-<div class="warning">
-  🧪 Simulation only — no wallet is connected and no real cryptocurrency
-  transactions are performed.
+<div class="card notice">
+  🔎 Read-only market scanner. No wallet is connected.
+  No token approvals and no cryptocurrency transactions are performed.
 </div>
 
 <div class="card">
+  <h2>🌐 Base Network</h2>
 
-<button class="wallet" disabled>
-  🔒 Wallet Connection — Disabled in V1
-</button>
+  <div class="row">
+    <span class="label">Network</span>
+    <span class="value">Base Mainnet</span>
+  </div>
 
-<div class="grid">
+  <div class="row">
+    <span class="label">Chain ID</span>
+    <span class="value">8453</span>
+  </div>
 
-<div>
-<div class="label">Trading Capital (USDT)</div>
-<input id="capital" type="number" value="100" min="1">
+  <div class="row">
+    <span class="label">Connection</span>
+    <span id="status" class="value yellow">Not tested</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Latest Block</span>
+    <span id="block" class="value">—</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Gas Price</span>
+    <span id="gas" class="value">—</span>
+  </div>
+
+  <div class="row">
+    <span class="label">Last Update</span>
+    <span id="updated" class="value">—</span>
+  </div>
+
+  <button id="testBtn" onclick="testBase()">
+    TEST LIVE BASE CONNECTION
+  </button>
+
+  <div id="log" class="log">
+    Waiting for live blockchain test…
+  </div>
 </div>
-
-<div>
-<div class="label">Min Net Profit ($)</div>
-<input id="minProfit" type="number" value="0.20" min="0" step="0.01">
-</div>
-
-</div>
-
-<br>
-
-<div class="status">
-<div id="statusDot" class="dot"></div>
-<strong id="statusText">BOT STOPPED</strong>
-</div>
-
-<br>
-
-<button id="botButton" class="start" onclick="toggleBot()">
-▶ START BOT
-</button>
-
-</div>
-
-
-<div class="card opportunity">
-
-<h3>🔎 Best Arbitrage Opportunity</h3>
-
-<div class="box" style="margin-bottom:10px">
-<div class="label">Trading Pair</div>
-<div id="pair" class="value blue">—</div>
-</div>
-
-<div class="route">
-
-<div class="exchange">
-<small>BUY DEX</small>
-<strong id="buyDex">—</strong>
-<div id="buyPrice">$—</div>
-</div>
-
-<div class="arrow">→</div>
-
-<div class="exchange">
-<small>SELL DEX</small>
-<strong id="sellDex">—</strong>
-<div id="sellPrice">$—</div>
-</div>
-
-</div>
-
-<div class="grid">
-
-<div class="box">
-<div class="label">Gross Spread</div>
-<div id="spread" class="value green">—</div>
-</div>
-
-<div class="box">
-<div class="label">Gross Profit</div>
-<div id="grossProfit" class="value green">—</div>
-</div>
-
-<div class="box">
-<div class="label">DEX Fees</div>
-<div id="fees" class="value red">—</div>
-</div>
-
-<div class="box">
-<div class="label">Gas</div>
-<div id="gas" class="value red">—</div>
-</div>
-
-<div class="box">
-<div class="label">Slippage</div>
-<div id="slippage" class="value red">—</div>
-</div>
-
-<div class="box">
-<div class="label">Expected Net</div>
-<div id="net" class="value green">—</div>
-</div>
-
-</div>
-
-</div>
-
 
 <div class="card">
+  <h2>🏦 DEX Integration</h2>
 
-<h3>📊 Simulation Performance</h3>
+  <div class="row">
+    <span class="label">DEX #1</span>
+    <span class="value">Aerodrome</span>
+  </div>
 
-<div class="grid">
+  <div class="row">
+    <span class="label">Router</span>
+    <span class="value green">Configured for next step</span>
+  </div>
 
-<div class="box">
-<div class="label">Completed Trades</div>
-<div id="tradeCount" class="value">0</div>
+  <div class="row">
+    <span class="label">Trading</span>
+    <span class="value red">DISABLED</span>
+  </div>
+
+  <p>
+    After the Base connection test succeeds, the next upgrade will
+    request real read-only swap quotes from Aerodrome.
+  </p>
 </div>
-
-<div class="box">
-<div class="label">Realized Profit</div>
-<div id="totalProfit" class="value green">$0.00</div>
-</div>
-
-</div>
-
-</div>
-
 
 <div class="card">
+  <h2>🛡️ V2 Safety Status</h2>
 
-<h3>📜 Simulated Trade History</h3>
+  <div class="row">
+    <span class="label">Wallet</span>
+    <span class="value">Not connected</span>
+  </div>
 
-<div style="overflow-x:auto">
+  <div class="row">
+    <span class="label">Private key</span>
+    <span class="value">Not required</span>
+  </div>
 
-<table>
+  <div class="row">
+    <span class="label">Token approval</span>
+    <span class="value">None</span>
+  </div>
 
-<thead>
-<tr>
-<th>Pair</th>
-<th>Buy</th>
-<th>Sell</th>
-<th>Capital</th>
-<th>Net</th>
-</tr>
-</thead>
-
-<tbody id="history">
-
-<tr>
-<td colspan="5" style="color:#78869d">
-No simulated trades yet.
-</td>
-</tr>
-
-</tbody>
-
-</table>
-
+  <div class="row">
+    <span class="label">Transactions</span>
+    <span class="value">Disabled</span>
+  </div>
 </div>
 
-</div>
-
-<div class="footer">
-Arbitrage Bot V1 • Educational Simulation • No Real Funds
-</div>
+<p style="text-align:center;margin:35px 0">
+  <small>Arbitrage Bot V2.0 • Live Blockchain Read Test • No Real Trading</small>
+</p>
 
 </div>
-
 
 <script>
+const RPC = "https://mainnet.base.org";
 
-let running=false;
-let timer=null;
-let trades=0;
-let profit=0;
+async function rpc(method, params=[]){
+  const response = await fetch(RPC,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+      jsonrpc:"2.0",
+      id:1,
+      method:method,
+      params:params
+    })
+  });
 
-const pairs=[
- ["BTC/USDT",65000],
- ["ETH/USDT",3500],
- ["SOL/USDT",150],
- ["XRP/USDT",0.60],
- ["LINK/USDT",15],
- ["FIL/USDT",4.50],
- ["AXS/USDT",5.20],
- ["ADA/USDT",0.45]
-];
+  if(!response.ok){
+    throw new Error("HTTP " + response.status);
+  }
 
-const dexes=[
- "DEX Alpha",
- "DEX Beta",
- "DEX Gamma",
- "DEX Delta"
-];
+  const data = await response.json();
 
-function money(v){
- return "$"+Number(v).toFixed(4);
+  if(data.error){
+    throw new Error(data.error.message);
+  }
+
+  return data.result;
 }
 
-function toggleBot(){
+async function testBase(){
+  const button=document.getElementById("testBtn");
+  const status=document.getElementById("status");
+  const log=document.getElementById("log");
 
- running=!running;
+  button.disabled=true;
+  button.textContent="CONNECTING…";
+  status.textContent="Testing…";
+  status.className="value yellow";
+  log.textContent="Contacting Base mainnet…";
 
- const btn=document.getElementById("botButton");
- const dot=document.getElementById("statusDot");
- const status=document.getElementById("statusText");
+  try{
+    const chainHex=await rpc("eth_chainId");
+    const chainId=parseInt(chainHex,16);
 
- if(running){
+    if(chainId!==8453){
+      throw new Error("Unexpected chain ID: "+chainId);
+    }
 
-  btn.innerHTML="■ STOP BOT";
-  btn.className="stop";
+    const blockHex=await rpc("eth_blockNumber");
+    const gasHex=await rpc("eth_gasPrice");
 
-  dot.classList.add("active");
-  status.innerHTML="BOT SCANNING";
+    const block=parseInt(blockHex,16);
+    const gasWei=BigInt(gasHex);
+    const gasGwei=Number(gasWei)/1e9;
 
-  scan();
-  timer=setInterval(scan,3000);
+    document.getElementById("block").textContent=
+      block.toLocaleString();
 
- }else{
+    document.getElementById("gas").textContent=
+      gasGwei.toFixed(6)+" Gwei";
 
-  btn.innerHTML="▶ START BOT";
-  btn.className="start";
+    document.getElementById("updated").textContent=
+      new Date().toLocaleTimeString();
 
-  dot.classList.remove("active");
-  status.innerHTML="BOT STOPPED";
+    status.textContent="LIVE ✓";
+    status.className="value green";
 
-  clearInterval(timer);
+    log.textContent=
+      "SUCCESS: Base mainnet responded correctly. Chain ID = "+
+      chainId+
+      ". Live block and gas data received.";
 
- }
+  }catch(error){
+    status.textContent="CONNECTION ERROR";
+    status.className="value red";
 
+    log.textContent=
+      "Connection test failed: "+error.message+
+      ". This does not involve or affect any wallet or funds.";
+  }
+
+  button.disabled=false;
+  button.textContent="TEST AGAIN";
 }
-
-
-function scan(){
-
- const capital=
- Math.max(1,Number(document.getElementById("capital").value)||100);
-
- const minimum=
- Math.max(0,Number(document.getElementById("minProfit").value)||0);
-
- const selected=
- pairs[Math.floor(Math.random()*pairs.length)];
-
- const pair=selected[0];
- const base=selected[1];
-
- let a=Math.floor(Math.random()*dexes.length);
- let b;
-
- do{
-   b=Math.floor(Math.random()*dexes.length);
- }while(a===b);
-
- const buyDex=dexes[a];
- const sellDex=dexes[b];
-
- /*
- V1 SIMULATION:
- create a hypothetical 0.20%-1.20% spread.
- */
-
- const spreadPct=
- 0.20+(Math.random()*1.00);
-
- const buyPrice=
- base*(0.997+Math.random()*0.006);
-
- const sellPrice=
- buyPrice*(1+spreadPct/100);
-
- const gross=
- capital*(spreadPct/100);
-
- /*
- Simulated costs only.
- These are NOT real blockchain quotations.
- */
-
- const dexFee=
- capital*(0.0005+Math.random()*0.0010);
-
- const gas=
- 0.01+Math.random()*0.09;
-
- const slip=
- capital*(Math.random()*0.0007);
-
- const net=
- gross-dexFee-gas-slip;
-
- document.getElementById("pair").innerText=pair;
-
- document.getElementById("buyDex").innerText=buyDex;
- document.getElementById("sellDex").innerText=sellDex;
-
- document.getElementById("buyPrice").innerText=
- "$"+buyPrice.toFixed(buyPrice<10?5:2);
-
- document.getElementById("sellPrice").innerText=
- "$"+sellPrice.toFixed(sellPrice<10?5:2);
-
- document.getElementById("spread").innerText=
- spreadPct.toFixed(3)+"%";
-
- document.getElementById("grossProfit").innerText=
- money(gross);
-
- document.getElementById("fees").innerText=
- "-"+money(dexFee);
-
- document.getElementById("gas").innerText=
- "-"+money(gas);
-
- document.getElementById("slippage").innerText=
- "-"+money(slip);
-
- const netElement=document.getElementById("net");
-
- netElement.innerText=
- (net>=0?"+":"")+money(net);
-
- netElement.className=
- "value "+(net>=minimum?"green":"red");
-
-
- /*
- Only record a simulated trade if it passes
- the user's minimum-profit requirement.
- */
-
- if(net>=minimum){
-
-   trades++;
-   profit+=net;
-
-   document.getElementById("tradeCount").innerText=trades;
-
-   document.getElementById("totalProfit").innerText=
-   "+$"+profit.toFixed(4);
-
-   addHistory(
-     pair,
-     buyDex,
-     sellDex,
-     capital,
-     net
-   );
-
- }
-
-}
-
-
-function addHistory(pair,buy,sell,capital,net){
-
- const history=document.getElementById("history");
-
- if(trades===1){
-   history.innerHTML="";
- }
-
- const row=document.createElement("tr");
-
- row.innerHTML=
- "<td>"+pair+"</td>"+
- "<td>"+buy+"</td>"+
- "<td>"+sell+"</td>"+
- "<td>$"+capital.toFixed(2)+"</td>"+
- "<td class='green'>+$"+net.toFixed(4)+"</td>";
-
- history.prepend(row);
-
- /*
- Keep only latest 15 rows.
- */
-
- while(history.children.length>15){
-   history.removeChild(history.lastChild);
- }
-
-}
-
 </script>
 
 </body>
-  </html>
+</html>
