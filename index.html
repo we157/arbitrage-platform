@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.2</title>
+<title>Arbitrage Scanner V2.3</title>
 
 <style>
 *{box-sizing:border-box}
@@ -56,6 +56,7 @@ h2{font-size:25px}
 .red{color:#ff6b81}
 .yellow{color:#ffd166}
 .blue{color:#42bfff}
+
 input{
   width:100%;
   padding:15px;
@@ -65,6 +66,7 @@ input{
   border:1px solid #344968;
   border-radius:12px;
 }
+
 button{
   width:100%;
   margin-top:15px;
@@ -77,6 +79,7 @@ button{
   color:white;
 }
 button:disabled{background:#41506a}
+
 .log{
   margin-top:15px;
   padding:14px;
@@ -87,6 +90,11 @@ button:disabled{background:#41506a}
   line-height:1.5;
 }
 small{color:#71829d}
+.route{
+  font-size:16px;
+  line-height:1.6;
+  color:#b9c7dc;
+}
 </style>
 </head>
 
@@ -95,13 +103,18 @@ small{color:#71829d}
 
 <div class="header">
   <h1>⚡ Arbitrage Scanner</h1>
-  <div class="badge">V2.2<br>2 DEX LIVE</div>
+  <div class="badge">
+    V2.3<br>
+    ROUND TRIP
+  </div>
 </div>
 
 <div class="card notice">
-🔎 Live read-only comparison between Aerodrome and Uniswap V3 on Base.
-No wallet, token approval or swap transaction is used.
+🔎 Live read-only two-direction arbitrage scanner on Base.
+Both legs are quoted using the output of the previous leg.
+No wallet, approval or transaction is used.
 </div>
+
 
 <div class="card">
 <h2>🌐 Base Network</h2>
@@ -129,120 +142,211 @@ No wallet, token approval or swap transaction is used.
 
 
 <div class="card">
-<h2>💰 Quote Settings</h2>
+<h2>💰 Scan Settings</h2>
 
-<label class="label">Capital (USDC)</label>
-<input id="amount" type="number" value="100" min="1" step="1">
+<label class="label">Starting Capital (USDC)</label>
+
+<input
+  id="amount"
+  type="number"
+  value="100"
+  min="1"
+  step="1"
+>
 
 <div class="row">
-<span class="label">Pair</span>
-<span class="value">USDC → WETH</span>
+<span class="label">Starting Asset</span>
+<span class="value">USDC</span>
 </div>
 
-<button id="scanBtn">COMPARE BOTH DEXs</button>
+<div class="row">
+<span class="label">DEXs</span>
+<span class="value">
+Aerodrome + Uniswap V3
+</span>
+</div>
+
+<button id="scanBtn">
+SCAN ROUND-TRIP ARBITRAGE
+</button>
 
 <div id="log" class="log">
-Waiting for live comparison…
+Waiting for live round-trip scan…
 </div>
 </div>
 
 
 <div class="card">
-<h2>🏦 Aerodrome</h2>
+<h2>🔵 Route A</h2>
+
+<p class="route">
+100 USDC<br>
+↓ BUY WETH on Uniswap V3<br>
+↓ SELL WETH on Aerodrome<br>
+→ USDC
+</p>
 
 <div class="row">
-<span class="label">Route</span>
-<span class="value">V2 Volatile</span>
+<span class="label">Starting USDC</span>
+<span id="aStart" class="value">
+100.000000
+</span>
 </div>
 
 <div class="row">
-<span class="label">Input</span>
-<span id="aeroInput" class="value">100.00 USDC</span>
+<span class="label">Uniswap Fee Tier</span>
+<span id="aUniFee" class="value">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Expected WETH</span>
-<span id="aeroOut" class="value blue">—</span>
+<span class="label">WETH Bought</span>
+<span id="aWeth" class="value blue">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Effective ETH Price</span>
-<span id="aeroPrice" class="value">—</span>
+<span class="label">Final USDC</span>
+<span id="aFinal" class="value">
+—
+</span>
+</div>
+
+<div class="row">
+<span class="label">Gross P/L</span>
+<span id="aProfit" class="value">
+—
+</span>
+</div>
+
+<div class="row">
+<span class="label">Gross Return</span>
+<span id="aPct" class="value">
+—
+</span>
 </div>
 
 <div class="row">
 <span class="label">Status</span>
-<span id="aeroStatus" class="value yellow">WAITING</span>
+<span id="aStatus" class="value yellow">
+WAITING
+</span>
 </div>
 </div>
 
 
 <div class="card">
-<h2>🦄 Uniswap V3</h2>
+<h2>🟣 Route B</h2>
+
+<p class="route">
+100 USDC<br>
+↓ BUY WETH on Aerodrome<br>
+↓ SELL WETH on Uniswap V3<br>
+→ USDC
+</p>
 
 <div class="row">
-<span class="label">Input</span>
-<span id="uniInput" class="value">100.00 USDC</span>
+<span class="label">Starting USDC</span>
+<span id="bStart" class="value">
+100.000000
+</span>
 </div>
 
 <div class="row">
-<span class="label">Best Fee Tier</span>
-<span id="uniFee" class="value">—</span>
+<span class="label">WETH Bought</span>
+<span id="bWeth" class="value blue">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Expected WETH</span>
-<span id="uniOut" class="value blue">—</span>
+<span class="label">Uniswap Fee Tier</span>
+<span id="bUniFee" class="value">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Effective ETH Price</span>
-<span id="uniPrice" class="value">—</span>
+<span class="label">Final USDC</span>
+<span id="bFinal" class="value">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Quote Gas Estimate</span>
-<span id="uniGas" class="value">—</span>
+<span class="label">Gross P/L</span>
+<span id="bProfit" class="value">
+—
+</span>
+</div>
+
+<div class="row">
+<span class="label">Gross Return</span>
+<span id="bPct" class="value">
+—
+</span>
 </div>
 
 <div class="row">
 <span class="label">Status</span>
-<span id="uniStatus" class="value yellow">WAITING</span>
+<span id="bStatus" class="value yellow">
+WAITING
+</span>
 </div>
 </div>
 
 
 <div class="card">
-<h2>⚖️ Live Comparison</h2>
+<h2>🏆 Round-Trip Result</h2>
 
 <div class="row">
-<span class="label">Higher WETH Output</span>
-<span id="bestDex" class="value">—</span>
+<span class="label">Better Route</span>
+<span id="bestRoute" class="value">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Output Difference</span>
-<span id="difference" class="value">—</span>
+<span class="label">Best Final USDC</span>
+<span id="bestFinal" class="value">
+—
+</span>
 </div>
 
 <div class="row">
-<span class="label">Quote Difference</span>
-<span id="differencePct" class="value">—</span>
+<span class="label">Best Gross P/L</span>
+<span id="bestProfit" class="value">
+—
+</span>
+</div>
+
+<div class="row">
+<span class="label">Best Gross Return</span>
+<span id="bestPct" class="value">
+—
+</span>
+</div>
+
+<div class="row">
+<span class="label">Gross Opportunity</span>
+<span id="opportunity" class="value">
+—
+</span>
 </div>
 
 <div class="row">
 <span class="label">Last Scan</span>
-<span id="updated" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Trading</span>
-<span class="value red">DISABLED</span>
+<span id="updated" class="value">
+—
+</span>
 </div>
 
 <p class="label">
-The higher WETH output is only the better quote for this USDC → WETH leg.
-It is not an arbitrage profit.
+Gross P/L is quote-only. It is NOT net profit.
+Gas and an execution/slippage safety buffer have not
+yet been deducted.
 </p>
 </div>
 
@@ -261,7 +365,7 @@ It is not an arbitrage profit.
 </div>
 
 <div class="row">
-<span class="label">Approvals</span>
+<span class="label">Token approval</span>
 <span class="value">None</span>
 </div>
 
@@ -271,14 +375,24 @@ It is not an arbitrage profit.
 </div>
 
 <div class="row">
+<span class="label">Gas Deduction</span>
+<span class="value yellow">
+NOT YET
+</span>
+</div>
+
+<div class="row">
 <span class="label">Mode</span>
-<span class="value green">READ ONLY</span>
+<span class="value green">
+READ ONLY
+</span>
 </div>
 </div>
 
+
 <p style="text-align:center;margin:35px 0">
 <small>
-Arbitrage Scanner V2.2 • Aerodrome + Uniswap V3 • Quote Only
+Arbitrage Scanner V2.3 • Two-Direction Round Trip • No Real Trading
 </small>
 </p>
 
@@ -297,7 +411,8 @@ import {
 from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
 
 
-const RPC = "https://mainnet.base.org";
+const RPC =
+"https://mainnet.base.org";
 
 const USDC =
 "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -321,13 +436,33 @@ const UNI_ABI = [
 ];
 
 
-const provider = new JsonRpcProvider(RPC);
+const provider =
+new JsonRpcProvider(RPC);
 
 const aeroRouter =
-new Contract(AERO_ROUTER,AERO_ABI,provider);
+new Contract(
+  AERO_ROUTER,
+  AERO_ABI,
+  provider
+);
 
 const uniQuoter =
-new Contract(UNI_QUOTER,UNI_ABI,provider);
+new Contract(
+  UNI_QUOTER,
+  UNI_ABI,
+  provider
+);
+
+
+/*
+  Uniswap V3 standard fee tiers.
+*/
+const FEE_TIERS = [
+  100,
+  500,
+  3000,
+  10000
+];
 
 
 async function updateNetwork(){
@@ -337,92 +472,109 @@ async function updateNetwork(){
 
   if(Number(network.chainId)!==8453){
     throw new Error(
-      "Unexpected Chain ID: "+network.chainId
+      "Unexpected Chain ID: "+
+      network.chainId
     );
   }
 
   const block =
   await provider.getBlockNumber();
 
-  document.getElementById("block")
-    .textContent =
-    block.toLocaleString();
+  document
+  .getElementById("block")
+  .textContent =
+  block.toLocaleString();
 
-  document.getElementById("rpcStatus")
-    .textContent =
-    "LIVE ✓";
+  const rpc =
+  document.getElementById(
+    "rpcStatus"
+  );
 
-  document.getElementById("rpcStatus")
-    .className =
-    "value green";
+  rpc.textContent =
+  "LIVE ✓";
+
+  rpc.className =
+  "value green";
 }
 
 
-async function quoteAerodrome(amountIn){
+/*
+  Aerodrome quote.
 
-  const routes=[{
-    from:USDC,
-    to:WETH,
+  Direction can be:
+  USDC → WETH
+  or
+  WETH → USDC.
+*/
+async function quoteAero(
+  tokenIn,
+  tokenOut,
+  amountIn
+){
+
+  const routes = [{
+    from:tokenIn,
+    to:tokenOut,
     stable:false,
     factory:ZeroAddress
   }];
 
   const amounts =
-  await aeroRouter.getAmountsOut(
+  await aeroRouter
+  .getAmountsOut(
     amountIn,
     routes
   );
 
-  return amounts[
+  const output =
+  amounts[
     amounts.length-1
   ];
+
+  if(output<=0n){
+    throw new Error(
+      "Aerodrome returned zero output."
+    );
+  }
+
+  return output;
 }
 
 
-async function quoteUniswap(amountIn){
+/*
+  Test all selected Uniswap V3
+  fee tiers.
 
-  /*
-    Standard Uniswap V3 fee tiers:
-    0.01%, 0.05%, 0.30%, 1.00%
-
-    Failed/nonexistent pools are ignored.
-    Highest output wins.
-  */
-
-  const feeTiers=[
-    100,
-    500,
-    3000,
-    10000
-  ];
+  Highest output wins.
+*/
+async function quoteUni(
+  tokenIn,
+  tokenOut,
+  amountIn
+){
 
   let best=null;
 
-
-  for(const fee of feeTiers){
+  for(const fee of FEE_TIERS){
 
     try{
-
-      /*
-        staticCall performs an RPC simulation.
-        It does NOT broadcast a transaction.
-      */
 
       const result =
       await uniQuoter
       .quoteExactInputSingle
       .staticCall({
-        tokenIn:USDC,
-        tokenOut:WETH,
+        tokenIn:tokenIn,
+        tokenOut:tokenOut,
         amountIn:amountIn,
         fee:fee,
         sqrtPriceLimitX96:0
       });
 
+      const amountOut =
+      result[0];
 
-      const amountOut=result[0];
-      const gasEstimate=result[3];
-
+      const gasEstimate =
+      result[3];
 
       if(
         amountOut>0n &&
@@ -442,12 +594,10 @@ async function quoteUniswap(amountIn){
 
     }
     catch(error){
-
       /*
-        Missing or unusable pool.
-        Continue checking other tiers.
+        Ignore nonexistent /
+        unusable fee-tier pools.
       */
-
     }
 
   }
@@ -455,7 +605,7 @@ async function quoteUniswap(amountIn){
 
   if(best===null){
     throw new Error(
-      "No usable Uniswap V3 USDC/WETH pool quote returned."
+      "No usable Uniswap V3 quote."
     );
   }
 
@@ -472,34 +622,154 @@ function feeLabel(fee){
 }
 
 
-function priceText(amount,weth){
+function setPL(
+  id,
+  value,
+  suffix=""
+){
 
-  const price=
-  amount/weth;
+  const el =
+  document.getElementById(id);
 
-  return "$"+
-  price.toLocaleString(
-    undefined,
-    {
-      minimumFractionDigits:2,
-      maximumFractionDigits:2
-    }
-  )+
-  " / ETH";
+  el.textContent =
+  value+suffix;
+
+  const numeric =
+  Number(value);
+
+  if(numeric>0){
+    el.className =
+    "value green";
+  }
+  else if(numeric<0){
+    el.className =
+    "value red";
+  }
+  else{
+    el.className =
+    "value";
+  }
+}
+
+
+async function routeA(
+  amountUSDC
+){
+
+  /*
+    ROUTE A
+
+    USDC
+      ↓
+    Uniswap buys WETH
+      ↓
+    Aerodrome sells WETH
+      ↓
+    USDC
+  */
+
+  const uniBuy =
+  await quoteUni(
+    USDC,
+    WETH,
+    amountUSDC
+  );
+
+  const wethBought =
+  uniBuy.amountOut;
+
+
+  /*
+    IMPORTANT:
+
+    The exact WETH output from
+    Uniswap becomes the input
+    to Aerodrome.
+  */
+
+  const finalUSDC =
+  await quoteAero(
+    WETH,
+    USDC,
+    wethBought
+  );
+
+
+  return {
+    weth:wethBought,
+    finalUSDC:finalUSDC,
+    uniFee:uniBuy.fee,
+    uniGas:uniBuy.gasEstimate
+  };
+}
+
+
+async function routeB(
+  amountUSDC
+){
+
+  /*
+    ROUTE B
+
+    USDC
+      ↓
+    Aerodrome buys WETH
+      ↓
+    Uniswap sells WETH
+      ↓
+    USDC
+  */
+
+  const wethBought =
+  await quoteAero(
+    USDC,
+    WETH,
+    amountUSDC
+  );
+
+
+  /*
+    Exact Aerodrome WETH
+    becomes Uniswap input.
+  */
+
+  const uniSell =
+  await quoteUni(
+    WETH,
+    USDC,
+    wethBought
+  );
+
+
+  return {
+    weth:wethBought,
+    finalUSDC:
+      uniSell.amountOut,
+    uniFee:
+      uniSell.fee,
+    uniGas:
+      uniSell.gasEstimate
+  };
 }
 
 
 async function scan(){
 
   const button =
-  document.getElementById("scanBtn");
+  document.getElementById(
+    "scanBtn"
+  );
 
   const log =
-  document.getElementById("log");
+  document.getElementById(
+    "log"
+  );
 
   const amount =
   Number(
-    document.getElementById("amount").value
+    document
+    .getElementById("amount")
+    .value
   );
 
 
@@ -507,213 +777,363 @@ async function scan(){
     !Number.isFinite(amount) ||
     amount<=0
   ){
-    log.textContent=
+
+    log.textContent =
     "Please enter a valid USDC amount.";
+
     return;
   }
 
 
   button.disabled=true;
-  button.textContent=
-  "SCANNING BOTH DEXs…";
 
-  log.textContent=
-  "Reading Aerodrome and Uniswap V3 from Base…";
+  button.textContent =
+  "SCANNING BOTH DIRECTIONS…";
+
+  log.textContent =
+  "Requesting live round-trip quotes from Aerodrome and Uniswap V3…";
 
 
-  document.getElementById("aeroStatus")
-    .textContent="REQUESTING…";
+  const aStatus =
+  document.getElementById(
+    "aStatus"
+  );
 
-  document.getElementById("uniStatus")
-    .textContent="REQUESTING…";
+  const bStatus =
+  document.getElementById(
+    "bStatus"
+  );
+
+  aStatus.textContent =
+  "SCANNING…";
+
+  bStatus.textContent =
+  "SCANNING…";
+
+  aStatus.className =
+  "value yellow";
+
+  bStatus.className =
+  "value yellow";
 
 
   try{
 
     await updateNetwork();
 
-    const amountIn =
+
+    /*
+      USDC = 6 decimals
+    */
+
+    const amountRaw =
     parseUnits(
       amount.toString(),
       6
     );
 
 
-    document.getElementById("aeroInput")
-      .textContent=
-      amount.toFixed(2)+" USDC";
+    document
+    .getElementById("aStart")
+    .textContent =
+    amount.toFixed(6);
 
-    document.getElementById("uniInput")
-      .textContent=
-      amount.toFixed(2)+" USDC";
+    document
+    .getElementById("bStart")
+    .textContent =
+    amount.toFixed(6);
 
 
     /*
-      Request both DEX quotes.
+      Run both complete
+      round-trip routes.
     */
 
     const [
-      aeroRaw,
-      uniBest
+      resultA,
+      resultB
     ] =
     await Promise.all([
-      quoteAerodrome(amountIn),
-      quoteUniswap(amountIn)
+      routeA(amountRaw),
+      routeB(amountRaw)
     ]);
 
 
-    const aeroWeth =
+    /*
+      Convert results.
+    */
+
+    const aWeth =
     Number(
       formatUnits(
-        aeroRaw,
+        resultA.weth,
         18
       )
     );
 
-    const uniWeth =
+    const bWeth =
     Number(
       formatUnits(
-        uniBest.amountOut,
+        resultB.weth,
         18
       )
     );
 
-
-    document.getElementById("aeroOut")
-      .textContent=
-      aeroWeth.toFixed(8)+
-      " WETH";
-
-    document.getElementById("aeroPrice")
-      .textContent=
-      priceText(
-        amount,
-        aeroWeth
-      );
-
-    document.getElementById("aeroStatus")
-      .textContent=
-      "LIVE ✓";
-
-    document.getElementById("aeroStatus")
-      .className=
-      "value green";
-
-
-    document.getElementById("uniFee")
-      .textContent=
-      feeLabel(
-        uniBest.fee
-      );
-
-    document.getElementById("uniOut")
-      .textContent=
-      uniWeth.toFixed(8)+
-      " WETH";
-
-    document.getElementById("uniPrice")
-      .textContent=
-      priceText(
-        amount,
-        uniWeth
-      );
-
-    document.getElementById("uniGas")
-      .textContent=
-      uniBest.gasEstimate
-      .toString();
-
-    document.getElementById("uniStatus")
-      .textContent=
-      "LIVE ✓";
-
-    document.getElementById("uniStatus")
-      .className=
-      "value green";
-
-
-    const difference =
-    Math.abs(
-      aeroWeth-uniWeth
+    const aFinal =
+    Number(
+      formatUnits(
+        resultA.finalUSDC,
+        6
+      )
     );
 
-    const lower =
-    Math.min(
-      aeroWeth,
-      uniWeth
+    const bFinal =
+    Number(
+      formatUnits(
+        resultB.finalUSDC,
+        6
+      )
     );
 
-    const differencePct =
-    lower>0
-    ?
+
+    const aProfit =
+    aFinal-amount;
+
+    const bProfit =
+    bFinal-amount;
+
+
+    const aPct =
     (
-      difference/lower
-    )*100
-    :
-    0;
+      aProfit/amount
+    )*100;
+
+    const bPct =
+    (
+      bProfit/amount
+    )*100;
 
 
-    let bestDex;
+    /*
+      Route A display
+    */
 
-    if(aeroWeth>uniWeth){
-      bestDex="Aerodrome";
-    }
-    else if(uniWeth>aeroWeth){
-      bestDex="Uniswap V3";
+    document
+    .getElementById("aUniFee")
+    .textContent =
+    feeLabel(
+      resultA.uniFee
+    );
+
+    document
+    .getElementById("aWeth")
+    .textContent =
+    aWeth.toFixed(8)+
+    " WETH";
+
+    document
+    .getElementById("aFinal")
+    .textContent =
+    aFinal.toFixed(6)+
+    " USDC";
+
+    setPL(
+      "aProfit",
+      aProfit.toFixed(6),
+      " USDC"
+    );
+
+    setPL(
+      "aPct",
+      aPct.toFixed(4),
+      "%"
+    );
+
+    aStatus.textContent =
+    "LIVE ✓";
+
+    aStatus.className =
+    "value green";
+
+
+    /*
+      Route B display
+    */
+
+    document
+    .getElementById("bWeth")
+    .textContent =
+    bWeth.toFixed(8)+
+    " WETH";
+
+    document
+    .getElementById("bUniFee")
+    .textContent =
+    feeLabel(
+      resultB.uniFee
+    );
+
+    document
+    .getElementById("bFinal")
+    .textContent =
+    bFinal.toFixed(6)+
+    " USDC";
+
+    setPL(
+      "bProfit",
+      bProfit.toFixed(6),
+      " USDC"
+    );
+
+    setPL(
+      "bPct",
+      bPct.toFixed(4),
+      "%"
+    );
+
+    bStatus.textContent =
+    "LIVE ✓";
+
+    bStatus.className =
+    "value green";
+
+
+    /*
+      Select better complete
+      round trip.
+    */
+
+    let bestName;
+    let bestFinal;
+    let bestProfit;
+    let bestPct;
+
+
+    if(aFinal>=bFinal){
+
+      bestName =
+      "Route A";
+
+      bestFinal =
+      aFinal;
+
+      bestProfit =
+      aProfit;
+
+      bestPct =
+      aPct;
+
     }
     else{
-      bestDex="Equal";
+
+      bestName =
+      "Route B";
+
+      bestFinal =
+      bFinal;
+
+      bestProfit =
+      bProfit;
+
+      bestPct =
+      bPct;
+
     }
 
 
-    document.getElementById("bestDex")
-      .textContent=
-      bestDex;
+    document
+    .getElementById("bestRoute")
+    .textContent =
+    bestName;
 
-    document.getElementById("bestDex")
-      .className=
+
+    document
+    .getElementById("bestFinal")
+    .textContent =
+    bestFinal.toFixed(6)+
+    " USDC";
+
+
+    setPL(
+      "bestProfit",
+      bestProfit.toFixed(6),
+      " USDC"
+    );
+
+
+    setPL(
+      "bestPct",
+      bestPct.toFixed(4),
+      "%"
+    );
+
+
+    const opportunity =
+    document.getElementById(
+      "opportunity"
+    );
+
+
+    if(bestProfit>0){
+
+      opportunity.textContent =
+      "POSITIVE GROSS ✓";
+
+      opportunity.className =
       "value green";
 
+    }
+    else{
 
-    document.getElementById("difference")
-      .textContent=
-      difference.toFixed(8)+
-      " WETH";
+      opportunity.textContent =
+      "NO GROSS PROFIT";
 
+      opportunity.className =
+      "value red";
 
-    document.getElementById("differencePct")
-      .textContent=
-      differencePct.toFixed(4)+
-      "%";
-
-
-    document.getElementById("updated")
-      .textContent=
-      new Date()
-      .toLocaleTimeString();
+    }
 
 
-    log.textContent=
-      "SUCCESS: Live read-only quotes received from both DEXs. "+
-      "No trade was executed. "+
-      "The comparison is only the USDC → WETH leg.";
+    document
+    .getElementById("updated")
+    .textContent =
+    new Date()
+    .toLocaleTimeString();
+
+
+    log.textContent =
+    "SUCCESS: Both complete round-trip routes were quoted live. "+
+    "No trade was executed. "+
+    "Any positive result is GROSS only; gas and execution safety costs are not yet deducted.";
 
 
   }
   catch(error){
 
-    log.textContent=
-      "Scan failed: "+
-      error.message+
-      ". No transaction was attempted.";
+    log.textContent =
+    "Scan failed: "+
+    error.message+
+    ". No transaction was attempted.";
+
+    aStatus.textContent =
+    "ERROR";
+
+    bStatus.textContent =
+    "ERROR";
+
+    aStatus.className =
+    "value red";
+
+    bStatus.className =
+    "value red";
 
   }
 
 
   button.disabled=false;
 
-  button.textContent=
-  "COMPARE BOTH DEXs";
+  button.textContent =
+  "SCAN ROUND-TRIP ARBITRAGE";
 
 }
 
@@ -729,16 +1149,22 @@ document
 updateNetwork()
 .catch(error=>{
 
-  document.getElementById("rpcStatus")
-    .textContent="ERROR";
+  const rpc =
+  document.getElementById(
+    "rpcStatus"
+  );
 
-  document.getElementById("rpcStatus")
-    .className="value red";
+  rpc.textContent =
+  "ERROR";
 
-  document.getElementById("log")
-    .textContent=
-    "Base connection error: "+
-    error.message;
+  rpc.className =
+  "value red";
+
+  document
+  .getElementById("log")
+  .textContent =
+  "Base connection error: "+
+  error.message;
 
 });
 
