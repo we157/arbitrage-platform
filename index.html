@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.3.3</title>
+<title>Arbitrage Scanner V2.3.4</title>
 
 <style>
 *{box-sizing:border-box}
@@ -100,7 +100,7 @@ small{color:#71829d}
 
 <div class="header">
   <h1>⚡ Arbitrage<br>Scanner</h1>
-  <div class="badge">V2.3.3<br>SMART<br>FALLBACK</div>
+  <div class="badge">V2.3.4<br>MULTI-RPC<br>FAILOVER</div>
 </div>
 
 <div class="card notice">
@@ -346,7 +346,7 @@ Gas and execution/slippage safety costs have not yet been deducted.
 
 <p style="text-align:center;margin:35px 0">
 <small>
-V2.3.3 • Smart Aerodrome Fallback • No Real Trading
+V2.3.4 • Multi-RPC Failover • Smart Aerodrome Fallback • No Real Trading
 </small>
 </p>
 
@@ -363,8 +363,13 @@ import {
 }
 from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
 
-const RPC =
-"https://mainnet.base.org";
+const RPCS=[
+  {name:"Base Official",url:"https://mainnet.base.org"},
+  {name:"PublicNode",url:"https://base-rpc.publicnode.com"},
+  {name:"dRPC",url:"https://base.drpc.org"}
+];
+
+let activeRpcIndex=0;
 
 const USDC =
 "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
@@ -389,22 +394,18 @@ const UNI_ABI=[
 "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"
 ];
 
-const provider=
-new JsonRpcProvider(RPC);
+let provider;
+let aero;
+let uni;
 
-const aero=
-new Contract(
-  AERO_ROUTER,
-  AERO_ABI,
-  provider
-);
+function activateRpc(index){
+  activeRpcIndex=index % RPCS.length;
+  provider=new JsonRpcProvider(RPCS[activeRpcIndex].url,8453,{staticNetwork:true});
+  aero=new Contract(AERO_ROUTER,AERO_ABI,provider);
+  uni=new Contract(UNI_QUOTER,UNI_ABI,provider);
+}
 
-const uni=
-new Contract(
-  UNI_QUOTER,
-  UNI_ABI,
-  provider
-);
+activateRpc(0);
 
 const sleep=ms=>
 new Promise(resolve=>
@@ -418,24 +419,23 @@ function setStatus(id,text,type=""){
 
 async function updateNetwork(){
 
-  const network=
-  await provider.getNetwork();
+  let lastError=null;
 
-  if(Number(network.chainId)!==8453)
-    throw new Error("Wrong network");
+  for(let i=0;i<RPCS.length;i++){
+    try{
+      activateRpc(i);
+      const network=await provider.getNetwork();
+      if(Number(network.chainId)!==8453) throw new Error("Wrong network");
+      const block=await provider.getBlockNumber();
+      document.getElementById("block").textContent=block.toLocaleString();
+      setStatus("rpcStatus","LIVE ✓ · "+RPCS[i].name,"green");
+      return;
+    }catch(error){
+      lastError=error;
+    }
+  }
 
-  const block=
-  await provider.getBlockNumber();
-
-  document.getElementById("block")
-    .textContent=
-    block.toLocaleString();
-
-  setStatus(
-    "rpcStatus",
-    "LIVE ✓",
-    "green"
-  );
+  throw lastError || new Error("All Base RPCs unavailable");
 }
 
 /*
@@ -453,56 +453,37 @@ async function retryQuote(
 
   for(let attempt=1;attempt<=3;attempt++){
 
+    const rpcIndex=(activeRpcIndex + attempt - 1) % RPCS.length;
+    activateRpc(rpcIndex);
+    const rpcName=RPCS[rpcIndex].name;
+
     setStatus(
       diagnosticId,
-      "ATTEMPT "+attempt+"/3",
+      "ATTEMPT "+attempt+"/3 · "+rpcName,
       "yellow"
     );
 
     try{
-
-      const result=
-      await quoteFunction();
+      await provider.getBlockNumber();
+      const result=await quoteFunction();
 
       setStatus(
         diagnosticId,
-        attempt===1
-        ? "LIVE ✓"
-        : "LIVE ✓ ("+attempt+" attempts)",
+        (attempt===1 ? "LIVE ✓" : "LIVE ✓ ("+attempt+" attempts)")+
+        " · "+rpcName,
         "green"
       );
 
-      return{
-        ok:true,
-        result,
-        attempts:attempt
-      };
+      return{ok:true,result,attempts:attempt,rpc:rpcName};
 
-    }
-    catch(error){
-
+    }catch(error){
       lastError=error;
-
-      if(attempt<3){
-        await sleep(
-          700*attempt
-        );
-      }
-
+      if(attempt<3) await sleep(900*attempt);
     }
-
   }
 
-  setStatus(
-    diagnosticId,
-    "UNAVAILABLE ✕",
-    "red"
-  );
-
-  return{
-    ok:false,
-    error:lastError
-  };
+  setStatus(diagnosticId,"UNAVAILABLE ✕ · ALL RPCs","red");
+  return{ok:false,error:lastError};
 }
 
 async function aeroQuote(
@@ -953,7 +934,7 @@ async function scan(){
   resetDisplay(amount);
 
   log.textContent=
-  "Scanning all four quote legs with automatic retry…";
+  "Scanning all four quote legs with multi-RPC failover…";
 
   try{
 
