@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.3.4</title>
+<title>Arbitrage Scanner V2.4</title>
 
 <style>
 *{box-sizing:border-box}
@@ -100,14 +100,14 @@ small{color:#71829d}
 
 <div class="header">
   <h1>⚡ Arbitrage<br>Scanner</h1>
-  <div class="badge">V2.3.4<br>MULTI-RPC<br>FAILOVER</div>
+  <div class="badge">V2.4<br>NET PROFIT<br>SCANNER</div>
 </div>
 
 <div class="card notice">
 🔎 Live read-only round-trip scanner on Base.
 Aerodrome quotes use the Router default factory first, with explicit-factory fallback.
 Each quote can retry automatically up to 3 times without crashing the scan.
-No wallet or transaction is used.
+No wallet or transaction is used. V2.4 also estimates net P/L using a configurable gas reserve and execution/slippage buffer.
 </div>
 
 <div class="card">
@@ -144,6 +144,15 @@ No wallet or transaction is used.
 <span class="label">Maximum Attempts</span>
 <span class="value">3 per quote</span>
 </div>
+
+<label class="label">Gas Reserve (USDC)</label>
+<input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
+
+<label class="label" style="display:block;margin-top:14px">Slippage / Execution Buffer (%)</label>
+<input id="slippageBuffer" type="number" value="0.10" min="0" step="0.01">
+
+<label class="label" style="display:block;margin-top:14px">Minimum Net Profit (USDC)</label>
+<input id="minNetProfit" type="number" value="0.10" min="0" step="0.01">
 
 <button id="scanBtn">
 SCAN ROUND-TRIP ARBITRAGE
@@ -294,6 +303,26 @@ USDC<br>
 </div>
 
 <div class="row">
+<span class="label">Gas Reserve</span>
+<span id="gasCost" class="value">—</span>
+</div>
+
+<div class="row">
+<span class="label">Slippage / Execution Buffer</span>
+<span id="slipCost" class="value">—</span>
+</div>
+
+<div class="row">
+<span class="label">Estimated Net P/L</span>
+<span id="netPL" class="value">—</span>
+</div>
+
+<div class="row">
+<span class="label">Estimated Net Return</span>
+<span id="netPct" class="value">—</span>
+</div>
+
+<div class="row">
 <span class="label">Opportunity</span>
 <span id="opportunity" class="value">—</span>
 </div>
@@ -304,9 +333,7 @@ USDC<br>
 </div>
 
 <p class="label">
-Only complete routes are compared.
-Gross quote results are NOT net profit.
-Gas and execution/slippage safety costs have not yet been deducted.
+Only complete routes are compared. Estimated net P/L deducts the user-set gas reserve and slippage/execution buffer. The gas reserve is a safety estimate, not an exact transaction fee; exact cost is only known when a real transaction is constructed/executed.
 </p>
 </div>
 
@@ -346,7 +373,7 @@ Gas and execution/slippage safety costs have not yet been deducted.
 
 <p style="text-align:center;margin:35px 0">
 <small>
-V2.3.4 • Multi-RPC Failover • Smart Aerodrome Fallback • No Real Trading
+V2.4 • Net Profit Scanner • Multi-RPC Failover • No Real Trading
 </small>
 </p>
 
@@ -633,7 +660,7 @@ function resetDisplay(amount){
     "bWeth","bFee","bFinal",
     "bPL","bPct",
     "bestRoute","bestFinal",
-    "bestPL","bestPct",
+    "bestPL","bestPct","gasCost","slipCost","netPL","netPct",
     "opportunity","updated"
   ];
 
@@ -823,84 +850,47 @@ function showRouteB(
   };
 }
 
-function showBest(routes){
+function showBest(routes, amount, gasReserve, slippagePct, minNetProfit){
 
   if(routes.length===0){
-
-    setStatus(
-      "bestRoute",
-      "NO COMPLETE ROUTE",
-      "red"
-    );
-
-    setStatus(
-      "opportunity",
-      "NO SIGNAL",
-      "red"
-    );
-
+    setStatus("bestRoute","NO COMPLETE ROUTE","red");
+    setStatus("opportunity","NO SIGNAL","red");
     return;
   }
 
-  routes.sort(
-    (a,b)=>b.final-a.final
-  );
-
+  routes.sort((a,b)=>b.final-a.final);
   const best=routes[0];
 
-  document.getElementById("bestRoute")
-    .textContent=best.name;
+  document.getElementById("bestRoute").textContent=best.name;
+  document.getElementById("bestFinal").textContent=best.final.toFixed(6)+" USDC";
 
-  document.getElementById("bestFinal")
-    .textContent=
-    best.final.toFixed(6)+
-    " USDC";
+  const p=document.getElementById("bestPL");
+  p.textContent=(best.pl>=0?"+":"")+best.pl.toFixed(6)+" USDC";
+  p.className="value "+(best.pl>0?"green":"red");
 
-  const p=
-  document.getElementById("bestPL");
+  const r=document.getElementById("bestPct");
+  r.textContent=(best.pct>=0?"+":"")+best.pct.toFixed(4)+"%";
+  r.className="value "+(best.pct>0?"green":"red");
 
-  p.textContent=
-  (best.pl>=0?"+":"")+
-  best.pl.toFixed(6)+
-  " USDC";
+  const slipCost=amount*(slippagePct/100);
+  const netPL=best.pl-gasReserve-slipCost;
+  const netPct=(netPL/amount)*100;
 
-  p.className=
-  "value "+(
-    best.pl>0
-    ? "green"
-    : "red"
-  );
+  document.getElementById("gasCost").textContent="-"+gasReserve.toFixed(4)+" USDC";
+  document.getElementById("slipCost").textContent="-"+slipCost.toFixed(4)+" USDC ("+slippagePct.toFixed(2)+"%)";
 
-  const r=
-  document.getElementById("bestPct");
+  const n=document.getElementById("netPL");
+  n.textContent=(netPL>=0?"+":"")+netPL.toFixed(6)+" USDC";
+  n.className="value "+(netPL>0?"green":"red");
 
-  r.textContent=
-  (best.pct>=0?"+":"")+
-  best.pct.toFixed(4)+"%";
+  const np=document.getElementById("netPct");
+  np.textContent=(netPct>=0?"+":"")+netPct.toFixed(4)+"%";
+  np.className="value "+(netPct>0?"green":"red");
 
-  r.className=
-  "value "+(
-    best.pct>0
-    ? "green"
-    : "red"
-  );
-
-  if(best.pl>0){
-
-    setStatus(
-      "opportunity",
-      "GROSS OPPORTUNITY ✓",
-      "green"
-    );
-
+  if(netPL>=minNetProfit){
+    setStatus("opportunity","NET OPPORTUNITY ✓","green");
   }else{
-
-    setStatus(
-      "opportunity",
-      "NO GROSS PROFIT",
-      "red"
-    );
-
+    setStatus("opportunity","NO NET PROFIT","red");
   }
 }
 
@@ -918,9 +908,15 @@ async function scan(){
       .value
   );
 
+  const gasReserve=Number(document.getElementById("gasReserve").value);
+  const slippagePct=Number(document.getElementById("slippageBuffer").value);
+  const minNetProfit=Number(document.getElementById("minNetProfit").value);
+
   if(
-    !Number.isFinite(amount) ||
-    amount<=0
+    !Number.isFinite(amount) || amount<=0 ||
+    !Number.isFinite(gasReserve) || gasReserve<0 ||
+    !Number.isFinite(slippagePct) || slippagePct<0 ||
+    !Number.isFinite(minNetProfit) || minNetProfit<0
   ){
     log.textContent=
     "Enter a valid USDC amount.";
@@ -1056,7 +1052,7 @@ async function scan(){
     if(routeB)
       routes.push(routeB);
 
-    showBest(routes);
+    showBest(routes, amount, gasReserve, slippagePct, minNetProfit);
 
     document.getElementById("updated")
       .textContent=
