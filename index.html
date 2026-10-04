@@ -3,1127 +3,299 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.4</title>
-
+<title>Arbitrage Scanner V2.5</title>
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#07101f;
-  color:#eef4ff;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
 .container{max-width:850px;margin:auto;padding:20px}
-.header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:12px;
-}
-h1{font-size:28px;margin:10px 0}
-h2{font-size:25px}
-.badge{
-  background:#123f30;
-  color:#53e7a3;
-  padding:12px 18px;
-  border-radius:30px;
-  font-weight:bold;
-  text-align:center;
-}
-.card{
-  margin-top:22px;
-  padding:22px;
-  background:#111c2f;
-  border:1px solid #2d405f;
-  border-radius:20px;
-}
-.notice{background:#16243b;color:#b9c7dc}
-.row{
-  display:flex;
-  justify-content:space-between;
-  gap:15px;
-  margin:14px 0;
-  padding-bottom:12px;
-  border-bottom:1px solid #273954;
-}
-.label{color:#93a4bf}
-.value{
-  font-weight:bold;
-  text-align:right;
-  overflow-wrap:anywhere;
-}
-.green{color:#4ee29a}
-.red{color:#ff6b81}
-.yellow{color:#ffd166}
-.blue{color:#42bfff}
-input{
-  width:100%;
-  padding:15px;
-  font-size:18px;
-  color:white;
-  background:#091426;
-  border:1px solid #344968;
-  border-radius:12px;
-}
-button{
-  width:100%;
-  margin-top:15px;
-  border:0;
-  border-radius:14px;
-  padding:18px;
-  font-size:18px;
-  font-weight:bold;
-  background:#19bc72;
-  color:white;
-}
+.header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+h1{font-size:28px;margin:10px 0} h2{font-size:25px}
+.badge{background:#123f30;color:#53e7a3;padding:12px 18px;border-radius:30px;font-weight:bold;text-align:center}
+.card{margin-top:22px;padding:22px;background:#111c2f;border:1px solid #2d405f;border-radius:20px}
+.notice{background:#16243b;color:#b9c7dc;line-height:1.5}
+.row{display:flex;justify-content:space-between;gap:15px;margin:14px 0;padding-bottom:12px;border-bottom:1px solid #273954}
+.label{color:#93a4bf}.value{font-weight:bold;text-align:right;overflow-wrap:anywhere}
+.green{color:#4ee29a}.red{color:#ff6b81}.yellow{color:#ffd166}.blue{color:#42bfff}
+input{width:100%;padding:15px;font-size:18px;color:white;background:#091426;border:1px solid #344968;border-radius:12px}
+button{width:100%;margin-top:15px;border:0;border-radius:14px;padding:18px;font-size:18px;font-weight:bold;background:#19bc72;color:white}
 button:disabled{background:#41506a}
-.log{
-  margin-top:15px;
-  padding:14px;
-  background:#091426;
-  border-radius:12px;
-  font-family:monospace;
-  overflow-wrap:anywhere;
-  line-height:1.5;
-}
-.routeText{
-  color:#b9c7dc;
-  line-height:1.6;
-  font-size:18px;
-}
+.log{margin-top:15px;padding:14px;background:#091426;border-radius:12px;font-family:monospace;overflow-wrap:anywhere;line-height:1.5}
+.pair{padding:15px 0;border-bottom:1px solid #273954}.pair:last-child{border-bottom:0}
+.pairTop{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.pairName{font-size:20px;font-weight:bold}.pairMeta{color:#93a4bf;margin-top:8px;line-height:1.5}
 small{color:#71829d}
 </style>
 </head>
-
 <body>
 <div class="container">
-
 <div class="header">
-  <h1>⚡ Arbitrage<br>Scanner</h1>
-  <div class="badge">V2.4<br>NET PROFIT<br>SCANNER</div>
+<h1>⚡ Arbitrage<br>Scanner</h1>
+<div class="badge">V2.5<br>MULTI-PAIR<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-🔎 Live read-only round-trip scanner on Base.
-Aerodrome quotes use the Router default factory first, with explicit-factory fallback.
-Each quote can retry automatically up to 3 times without crashing the scan.
-No wallet or transaction is used. V2.4 also estimates net P/L using a configurable gas reserve and execution/slippage buffer.
+🔎 Live read-only multi-pair round-trip scanner on Base. V2.5 scans WETH/USDC, cbBTC/USDC and AERO/USDC across Uniswap V3 and Aerodrome. It keeps V2.4 multi-RPC failover, smart Aerodrome factory fallback, 3 attempts per quote, and estimated net-profit filtering. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
 <h2>🌐 Base Network</h2>
-
-<div class="row">
-<span class="label">Network</span>
-<span class="value">Base Mainnet</span>
-</div>
-
-<div class="row">
-<span class="label">Chain ID</span>
-<span class="value">8453</span>
-</div>
-
-<div class="row">
-<span class="label">RPC</span>
-<span id="rpcStatus" class="value yellow">Waiting</span>
-</div>
-
-<div class="row">
-<span class="label">Latest Block</span>
-<span id="block" class="value">—</span>
-</div>
+<div class="row"><span class="label">Network</span><span class="value">Base Mainnet</span></div>
+<div class="row"><span class="label">Chain ID</span><span class="value">8453</span></div>
+<div class="row"><span class="label">RPC</span><span id="rpcStatus" class="value yellow">Waiting</span></div>
+<div class="row"><span class="label">Latest Block</span><span id="block" class="value">—</span></div>
 </div>
 
 <div class="card">
 <h2>💰 Scan Settings</h2>
-
-<label class="label">Starting Capital (USDC)</label>
+<label class="label">Starting Capital per Pair (USDC)</label>
 <input id="amount" type="number" value="100" min="1" step="1">
-
-<div class="row">
-<span class="label">Maximum Attempts</span>
-<span class="value">3 per quote</span>
-</div>
-
-<label class="label">Gas Reserve (USDC)</label>
+<div class="row"><span class="label">Pairs</span><span class="value">3</span></div>
+<div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
+<label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
-
 <label class="label" style="display:block;margin-top:14px">Slippage / Execution Buffer (%)</label>
 <input id="slippageBuffer" type="number" value="0.10" min="0" step="0.01">
-
 <label class="label" style="display:block;margin-top:14px">Minimum Net Profit (USDC)</label>
 <input id="minNetProfit" type="number" value="0.10" min="0" step="0.01">
+<button id="scanBtn">SCAN ALL PAIRS</button>
+<div id="log" class="log">Waiting for scan…</div>
+</div>
 
-<button id="scanBtn">
-SCAN ROUND-TRIP ARBITRAGE
-</button>
-
-<div id="log" class="log">
-Waiting for scan…
+<div class="card">
+<h2>📊 Pair Leaderboard</h2>
+<div id="leaderboard">
+<div class="pair"><div class="pairTop"><span class="pairName">WETH / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">cbBTC / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">AERO / USDC</span><span class="value yellow">WAITING</span></div></div>
 </div>
 </div>
 
 <div class="card">
-<h2>🧪 Quote Diagnostics</h2>
-
-<div class="row">
-<span class="label">1. Uniswap<br>USDC → WETH</span>
-<span id="d1" class="value">WAITING</span>
-</div>
-
-<div class="row">
-<span class="label">2. Aerodrome<br>WETH → USDC</span>
-<span id="d2" class="value">WAITING</span>
-</div>
-
-<div class="row">
-<span class="label">3. Aerodrome<br>USDC → WETH</span>
-<span id="d3" class="value">WAITING</span>
-</div>
-
-<div class="row">
-<span class="label">4. Uniswap<br>WETH → USDC</span>
-<span id="d4" class="value">WAITING</span>
-</div>
-</div>
-
-<div class="card">
-<h2>🔵 Route A</h2>
-
-<div class="routeText">
-USDC<br>
-↓ BUY WETH on Uniswap V3<br>
-↓ SELL WETH on Aerodrome<br>
-→ USDC
-</div>
-
-<div class="row">
-<span class="label">Starting USDC</span>
-<span id="aStart" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Uniswap Fee Tier</span>
-<span id="aFee" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">WETH Bought</span>
-<span id="aWeth" class="value blue">—</span>
-</div>
-
-<div class="row">
-<span class="label">Final USDC</span>
-<span id="aFinal" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Gross P/L</span>
-<span id="aPL" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Gross Return</span>
-<span id="aPct" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Status</span>
-<span id="aStatus" class="value">WAITING</span>
-</div>
-</div>
-
-<div class="card">
-<h2>🟣 Route B</h2>
-
-<div class="routeText">
-USDC<br>
-↓ BUY WETH on Aerodrome<br>
-↓ SELL WETH on Uniswap V3<br>
-→ USDC
-</div>
-
-<div class="row">
-<span class="label">Starting USDC</span>
-<span id="bStart" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">WETH Bought</span>
-<span id="bWeth" class="value blue">—</span>
-</div>
-
-<div class="row">
-<span class="label">Uniswap Fee Tier</span>
-<span id="bFee" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Final USDC</span>
-<span id="bFinal" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Gross P/L</span>
-<span id="bPL" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Gross Return</span>
-<span id="bPct" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Status</span>
-<span id="bStatus" class="value">WAITING</span>
-</div>
-</div>
-
-<div class="card">
-<h2>🏆 Round-Trip Result</h2>
-
-<div class="row">
-<span class="label">Better Complete Route</span>
-<span id="bestRoute" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Best Final USDC</span>
-<span id="bestFinal" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Best Gross P/L</span>
-<span id="bestPL" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Best Gross Return</span>
-<span id="bestPct" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Gas Reserve</span>
-<span id="gasCost" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Slippage / Execution Buffer</span>
-<span id="slipCost" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Estimated Net P/L</span>
-<span id="netPL" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Estimated Net Return</span>
-<span id="netPct" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Opportunity</span>
-<span id="opportunity" class="value">—</span>
-</div>
-
-<div class="row">
-<span class="label">Last Scan</span>
-<span id="updated" class="value">—</span>
-</div>
-
-<p class="label">
-Only complete routes are compared. Estimated net P/L deducts the user-set gas reserve and slippage/execution buffer. The gas reserve is a safety estimate, not an exact transaction fee; exact cost is only known when a real transaction is constructed/executed.
-</p>
+<h2>🏆 Best Complete Result</h2>
+<div class="row"><span class="label">Pair</span><span id="bestPair" class="value">—</span></div>
+<div class="row"><span class="label">Better Route</span><span id="bestRoute" class="value">—</span></div>
+<div class="row"><span class="label">Best Final USDC</span><span id="bestFinal" class="value">—</span></div>
+<div class="row"><span class="label">Gross P/L</span><span id="bestGross" class="value">—</span></div>
+<div class="row"><span class="label">Gas Reserve</span><span id="gasCost" class="value">—</span></div>
+<div class="row"><span class="label">Execution Buffer</span><span id="bufferCost" class="value">—</span></div>
+<div class="row"><span class="label">Estimated Net P/L</span><span id="netPL" class="value">—</span></div>
+<div class="row"><span class="label">Estimated Net Return</span><span id="netPct" class="value">—</span></div>
+<div class="row"><span class="label">Opportunity</span><span id="opportunity" class="value">—</span></div>
+<div class="row"><span class="label">Last Scan</span><span id="updated" class="value">—</span></div>
+<p class="label">Only complete round trips are ranked. A pair can show UNAVAILABLE if one venue cannot return a usable quote. Estimated net P/L is still a scanner estimate, not guaranteed executable profit.</p>
 </div>
 
 <div class="card">
 <h2>🛡️ Safety Status</h2>
-
-<div class="row">
-<span class="label">Wallet</span>
-<span class="value">Not connected</span>
+<div class="row"><span class="label">Wallet</span><span class="value">Not connected</span></div>
+<div class="row"><span class="label">Private Key</span><span class="value">Not required</span></div>
+<div class="row"><span class="label">Approvals</span><span class="value">None</span></div>
+<div class="row"><span class="label">Transactions</span><span class="value red">DISABLED</span></div>
+<div class="row"><span class="label">Multi-RPC Failover</span><span class="value green">ACTIVE</span></div>
+<div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<div class="row">
-<span class="label">Private Key</span>
-<span class="value">Not required</span>
-</div>
-
-<div class="row">
-<span class="label">Approvals</span>
-<span class="value">None</span>
-</div>
-
-<div class="row">
-<span class="label">Transactions</span>
-<span class="value red">DISABLED</span>
-</div>
-
-<div class="row">
-<span class="label">Auto Retry</span>
-<span class="value green">ACTIVE</span>
-</div>
-
-<div class="row">
-<span class="label">Mode</span>
-<span class="value green">READ ONLY</span>
-</div>
-</div>
-
-<p style="text-align:center;margin:35px 0">
-<small>
-V2.4 • Net Profit Scanner • Multi-RPC Failover • No Real Trading
-</small>
-</p>
-
+<p style="text-align:center;margin:35px 0"><small>V2.5 • Multi-Pair Scanner • Net Profit Filter • No Real Trading</small></p>
 </div>
 
 <script type="module">
-
-import {
-  JsonRpcProvider,
-  Contract,
-  formatUnits,
-  parseUnits,
-  ZeroAddress
-}
-from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
+import {JsonRpcProvider,Contract,formatUnits,parseUnits,ZeroAddress} from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
 
 const RPCS=[
-  {name:"Base Official",url:"https://mainnet.base.org"},
-  {name:"PublicNode",url:"https://base-rpc.publicnode.com"},
-  {name:"dRPC",url:"https://base.drpc.org"}
+ {name:"Base Official",url:"https://mainnet.base.org"},
+ {name:"PublicNode",url:"https://base-rpc.publicnode.com"},
+ {name:"dRPC",url:"https://base.drpc.org"}
 ];
-
 let activeRpcIndex=0;
 
-const USDC =
-"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+const WETH="0x4200000000000000000000000000000000000006";
+const CBBTC="0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
+const AERO="0x940181a94A35A4569E4529A3CDfB74e38FD98631";
+const AERO_ROUTER="0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
+const AERO_FACTORY="0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
+const UNI_QUOTER="0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 
-const WETH =
-"0x4200000000000000000000000000000000000006";
-
-const AERO_ROUTER =
-"0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
-
-const AERO_FACTORY =
-"0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
-
-const UNI_QUOTER =
-"0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
-
-const AERO_ABI=[
-"function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"
+const PAIRS=[
+ {symbol:"WETH",address:WETH,decimals:18},
+ {symbol:"cbBTC",address:CBBTC,decimals:8},
+ {symbol:"AERO",address:AERO,decimals:18}
 ];
 
-const UNI_ABI=[
-"function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"
-];
+const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
+const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 
-let provider;
-let aero;
-let uni;
-
-function activateRpc(index){
-  activeRpcIndex=index % RPCS.length;
-  provider=new JsonRpcProvider(RPCS[activeRpcIndex].url,8453,{staticNetwork:true});
-  aero=new Contract(AERO_ROUTER,AERO_ABI,provider);
-  uni=new Contract(UNI_QUOTER,UNI_ABI,provider);
+let provider,aero,uni;
+function activateRpc(i){
+ activeRpcIndex=i%RPCS.length;
+ provider=new JsonRpcProvider(RPCS[activeRpcIndex].url,8453,{staticNetwork:true});
+ aero=new Contract(AERO_ROUTER,AERO_ABI,provider);
+ uni=new Contract(UNI_QUOTER,UNI_ABI,provider);
+ return RPCS[activeRpcIndex];
 }
-
 activateRpc(0);
 
-const sleep=ms=>
-new Promise(resolve=>
-setTimeout(resolve,ms));
-
-function setStatus(id,text,type=""){
-  const el=document.getElementById(id);
-  el.textContent=text;
-  el.className="value "+type;
+function setText(id,text,type=""){
+ const el=document.getElementById(id); el.textContent=text; el.className="value "+type;
 }
-
 async function updateNetwork(){
+ for(let i=0;i<RPCS.length;i++){
+  const idx=(activeRpcIndex+i)%RPCS.length;
+  try{
+   const rpc=activateRpc(idx);
+   const net=await provider.getNetwork();
+   if(Number(net.chainId)!==8453) throw new Error("Wrong chain");
+   const block=await provider.getBlockNumber();
+   setText("rpcStatus","LIVE ✓ · "+rpc.name,"green");
+   setText("block",block.toLocaleString());
+   return;
+  }catch(e){}
+ }
+ setText("rpcStatus","UNAVAILABLE","red"); throw new Error("All Base RPCs unavailable");
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-  let lastError=null;
-
-  for(let i=0;i<RPCS.length;i++){
-    try{
-      activateRpc(i);
-      const network=await provider.getNetwork();
-      if(Number(network.chainId)!==8453) throw new Error("Wrong network");
-      const block=await provider.getBlockNumber();
-      document.getElementById("block").textContent=block.toLocaleString();
-      setStatus("rpcStatus","LIVE ✓ · "+RPCS[i].name,"green");
-      return;
-    }catch(error){
-      lastError=error;
-    }
-  }
-
-  throw lastError || new Error("All Base RPCs unavailable");
+async function withRetry(fn){
+ let last;
+ for(let attempt=0;attempt<3;attempt++){
+  const idx=(activeRpcIndex+attempt)%RPCS.length;
+  activateRpc(idx);
+  try{
+   const result=await fn();
+   return {ok:true,result,rpc:RPCS[idx].name,attempts:attempt+1};
+  }catch(e){last=e; await sleep(500*(attempt+1));}
+ }
+ return {ok:false,error:last};
 }
 
-/*
-  Generic reliability wrapper.
-
-  A failed read is retried up to
-  three times with increasing delay.
-*/
-async function retryQuote(
-  diagnosticId,
-  quoteFunction
-){
-
-  let lastError=null;
-
-  for(let attempt=1;attempt<=3;attempt++){
-
-    const rpcIndex=(activeRpcIndex + attempt - 1) % RPCS.length;
-    activateRpc(rpcIndex);
-    const rpcName=RPCS[rpcIndex].name;
-
-    setStatus(
-      diagnosticId,
-      "ATTEMPT "+attempt+"/3 · "+rpcName,
-      "yellow"
-    );
-
-    try{
-      await provider.getBlockNumber();
-      const result=await quoteFunction();
-
-      setStatus(
-        diagnosticId,
-        (attempt===1 ? "LIVE ✓" : "LIVE ✓ ("+attempt+" attempts)")+
-        " · "+rpcName,
-        "green"
-      );
-
-      return{ok:true,result,attempts:attempt,rpc:rpcName};
-
-    }catch(error){
-      lastError=error;
-      if(attempt<3) await sleep(900*attempt);
-    }
-  }
-
-  setStatus(diagnosticId,"UNAVAILABLE ✕ · ALL RPCs","red");
-  return{ok:false,error:lastError};
+async function aeroQuote(tokenIn,tokenOut,amountIn){
+ let last;
+ for(const factory of [ZeroAddress,AERO_FACTORY]){
+  try{
+   const route=[{from:tokenIn,to:tokenOut,stable:false,factory}];
+   const amounts=await aero.getAmountsOut(amountIn,route);
+   const out=amounts[amounts.length-1];
+   if(out<=0n) throw new Error("Zero output");
+   return out;
+  }catch(e){last=e; await sleep(180);}
+ }
+ throw last||new Error("Aerodrome quote failed");
 }
 
-async function aeroQuote(
-  tokenIn,
-  tokenOut,
-  amountIn
-){
+async function uniQuote(tokenIn,tokenOut,amountIn){
+ let best=null;
+ for(const fee of [100,500,3000,10000]){
+  try{
+   const q=await uni.quoteExactInputSingle.staticCall({
+    tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
+   });
+   const amountOut=q[0];
+   if(amountOut>0n && (!best||amountOut>best.amountOut)) best={amountOut,fee};
+  }catch(e){}
+ }
+ if(!best) throw new Error("No Uniswap pool quote");
+ return best;
+}
+function feeText(f){return (f/10000).toFixed(2)+"%";}
 
-  /*
-    V2.3.3 reliability fix:
-    Use Aerodrome Router's approved/default factory first
-    (ZeroAddress), matching the stable V2.1 quote method.
-    If that RPC call fails, fall back once to the explicit
-    V2 Pool Factory before retryQuote performs its next attempt.
-  */
+async function scanPair(pair,amount){
+ const start=parseUnits(amount.toString(),6);
 
-  const factories=[
-    ZeroAddress,
-    AERO_FACTORY
-  ];
+ const a1=await withRetry(()=>uniQuote(USDC,pair.address,start));
+ let a2={ok:false};
+ if(a1.ok) a2=await withRetry(()=>aeroQuote(pair.address,USDC,a1.result.amountOut));
 
-  let lastError=null;
+ const b1=await withRetry(()=>aeroQuote(USDC,pair.address,start));
+ let b2={ok:false};
+ if(b1.ok) b2=await withRetry(()=>uniQuote(pair.address,USDC,b1.result));
 
-  for(const factory of factories){
-
-    const route=[{
-      from:tokenIn,
-      to:tokenOut,
-      stable:false,
-      factory
-    }];
-
-    try{
-
-      const amounts=
-      await aero.getAmountsOut(
-        amountIn,
-        route
-      );
-
-      const output=
-      amounts[amounts.length-1];
-
-      if(output>0n)
-        return output;
-
-      throw new Error(
-        "Aerodrome returned zero output"
-      );
-
-    }
-    catch(error){
-      lastError=error;
-      await sleep(250);
-    }
-
-  }
-
-  throw lastError ||
-  new Error("Aerodrome quote unavailable");
+ const routes=[];
+ if(a1.ok&&a2.ok){
+  const final=Number(formatUnits(a2.result,6));
+  routes.push({route:"A",final,gross:final-amount,fee:feeText(a1.result.fee)});
+ }
+ if(b1.ok&&b2.ok){
+  const final=Number(formatUnits(b2.result.amountOut,6));
+  routes.push({route:"B",final,gross:final-amount,fee:feeText(b2.result.fee)});
+ }
+ if(!routes.length) return {pair:pair.symbol,ok:false};
+ routes.sort((x,y)=>y.final-x.final);
+ return {pair:pair.symbol,ok:true,...routes[0],completeRoutes:routes.length};
 }
 
-async function uniQuote(
-  tokenIn,
-  tokenOut,
-  amountIn
-){
-
-  const fees=[
-    100,
-    500,
-    3000,
-    10000
-  ];
-
-  let best=null;
-
-  for(const fee of fees){
-
-    try{
-
-      const result=
-      await uni
-      .quoteExactInputSingle
-      .staticCall({
-        tokenIn,
-        tokenOut,
-        amountIn,
-        fee,
-        sqrtPriceLimitX96:0
-      });
-
-      const amountOut=result[0];
-
-      if(
-        amountOut>0n &&
-        (
-          best===null ||
-          amountOut>best.amountOut
-        )
-      ){
-        best={
-          fee,
-          amountOut,
-          gasEstimate:result[3]
-        };
-      }
-
-    }
-    catch(error){
-      // Invalid/unavailable pool.
-    }
-
-  }
-
-  if(best===null)
-    throw new Error(
-      "No usable Uniswap quote"
-    );
-
-  return best;
-}
-
-function feeText(fee){
-  return(
-    Number(fee)/10000
-  ).toFixed(2)+"%";
-}
-
-function resetDisplay(amount){
-
-  ["d1","d2","d3","d4"].forEach(id=>
-    setStatus(id,"WAITING")
-  );
-
-  document.getElementById("aStart")
-    .textContent=
-    amount.toFixed(6)+" USDC";
-
-  document.getElementById("bStart")
-    .textContent=
-    amount.toFixed(6)+" USDC";
-
-  const ids=[
-    "aFee","aWeth","aFinal",
-    "aPL","aPct",
-    "bWeth","bFee","bFinal",
-    "bPL","bPct",
-    "bestRoute","bestFinal",
-    "bestPL","bestPct","gasCost","slipCost","netPL","netPct",
-    "opportunity","updated"
-  ];
-
-  ids.forEach(id=>
-    document.getElementById(id)
-      .textContent="—"
-  );
-
-  setStatus(
-    "aStatus",
-    "WAITING"
-  );
-
-  setStatus(
-    "bStatus",
-    "WAITING"
-  );
-}
-
-function showRouteA(
-  amount,
-  first,
-  second
-){
-
-  if(!first.ok || !second.ok){
-
-    setStatus(
-      "aStatus",
-      "INCOMPLETE",
-      "red"
-    );
-
-    return null;
-  }
-
-  const weth=
-  Number(
-    formatUnits(
-      first.result.amountOut,
-      18
-    )
-  );
-
-  const final=
-  Number(
-    formatUnits(
-      second.result,
-      6
-    )
-  );
-
-  const pl=
-  final-amount;
-
-  const pct=
-  (pl/amount)*100;
-
-  document.getElementById("aFee")
-    .textContent=
-    feeText(first.result.fee);
-
-  document.getElementById("aWeth")
-    .textContent=
-    weth.toFixed(8)+" WETH";
-
-  document.getElementById("aFinal")
-    .textContent=
-    final.toFixed(6)+" USDC";
-
-  const plEl=
-  document.getElementById("aPL");
-
-  plEl.textContent=
-  (pl>=0?"+":"")+
-  pl.toFixed(6)+" USDC";
-
-  plEl.className=
-  "value "+(pl>0?"green":"red");
-
-  const pctEl=
-  document.getElementById("aPct");
-
-  pctEl.textContent=
-  (pct>=0?"+":"")+
-  pct.toFixed(4)+"%";
-
-  pctEl.className=
-  "value "+(pct>0?"green":"red");
-
-  setStatus(
-    "aStatus",
-    "COMPLETE ✓",
-    "green"
-  );
-
-  return{
-    name:"Route A",
-    final,
-    pl,
-    pct
-  };
-}
-
-function showRouteB(
-  amount,
-  first,
-  second
-){
-
-  if(!first.ok || !second.ok){
-
-    setStatus(
-      "bStatus",
-      "INCOMPLETE",
-      "red"
-    );
-
-    return null;
-  }
-
-  const weth=
-  Number(
-    formatUnits(
-      first.result,
-      18
-    )
-  );
-
-  const final=
-  Number(
-    formatUnits(
-      second.result.amountOut,
-      6
-    )
-  );
-
-  const pl=
-  final-amount;
-
-  const pct=
-  (pl/amount)*100;
-
-  document.getElementById("bWeth")
-    .textContent=
-    weth.toFixed(8)+" WETH";
-
-  document.getElementById("bFee")
-    .textContent=
-    feeText(second.result.fee);
-
-  document.getElementById("bFinal")
-    .textContent=
-    final.toFixed(6)+" USDC";
-
-  const plEl=
-  document.getElementById("bPL");
-
-  plEl.textContent=
-  (pl>=0?"+":"")+
-  pl.toFixed(6)+" USDC";
-
-  plEl.className=
-  "value "+(pl>0?"green":"red");
-
-  const pctEl=
-  document.getElementById("bPct");
-
-  pctEl.textContent=
-  (pct>=0?"+":"")+
-  pct.toFixed(4)+"%";
-
-  pctEl.className=
-  "value "+(pct>0?"green":"red");
-
-  setStatus(
-    "bStatus",
-    "COMPLETE ✓",
-    "green"
-  );
-
-  return{
-    name:"Route B",
-    final,
-    pl,
-    pct
-  };
-}
-
-function showBest(routes, amount, gasReserve, slippagePct, minNetProfit){
-
-  if(routes.length===0){
-    setStatus("bestRoute","NO COMPLETE ROUTE","red");
-    setStatus("opportunity","NO SIGNAL","red");
-    return;
-  }
-
-  routes.sort((a,b)=>b.final-a.final);
-  const best=routes[0];
-
-  document.getElementById("bestRoute").textContent=best.name;
-  document.getElementById("bestFinal").textContent=best.final.toFixed(6)+" USDC";
-
-  const p=document.getElementById("bestPL");
-  p.textContent=(best.pl>=0?"+":"")+best.pl.toFixed(6)+" USDC";
-  p.className="value "+(best.pl>0?"green":"red");
-
-  const r=document.getElementById("bestPct");
-  r.textContent=(best.pct>=0?"+":"")+best.pct.toFixed(4)+"%";
-  r.className="value "+(best.pct>0?"green":"red");
-
-  const slipCost=amount*(slippagePct/100);
-  const netPL=best.pl-gasReserve-slipCost;
-  const netPct=(netPL/amount)*100;
-
-  document.getElementById("gasCost").textContent="-"+gasReserve.toFixed(4)+" USDC";
-  document.getElementById("slipCost").textContent="-"+slipCost.toFixed(4)+" USDC ("+slippagePct.toFixed(2)+"%)";
-
-  const n=document.getElementById("netPL");
-  n.textContent=(netPL>=0?"+":"")+netPL.toFixed(6)+" USDC";
-  n.className="value "+(netPL>0?"green":"red");
-
-  const np=document.getElementById("netPct");
-  np.textContent=(netPct>=0?"+":"")+netPct.toFixed(4)+"%";
-  np.className="value "+(netPct>0?"green":"red");
-
-  if(netPL>=minNetProfit){
-    setStatus("opportunity","NET OPPORTUNITY ✓","green");
+function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
+ const buffer=amount*(slippagePct/100);
+ const board=document.getElementById("leaderboard");
+ board.innerHTML="";
+ for(const r of results){
+  const div=document.createElement("div"); div.className="pair";
+  if(!r.ok){
+   div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">UNAVAILABLE</span></div><div class="pairMeta">No complete two-venue round trip this scan.</div>`;
   }else{
-    setStatus("opportunity","NO NET PROFIT","red");
+   const net=r.gross-gasReserve-buffer;
+   const good=net>=minNet;
+   div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
+   <div class="pairMeta">Best Route ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.completeRoutes}/2 routes complete</div>`;
+   r.net=net;
   }
+  board.appendChild(div);
+ }
+}
+
+function renderBest(results,amount,gasReserve,slippagePct,minNet){
+ const valid=results.filter(r=>r.ok);
+ if(!valid.length){
+  ["bestPair","bestRoute","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
+  setText("opportunity","NO COMPLETE ROUTE","yellow");
+  setText("updated",new Date().toLocaleTimeString());
+  return;
+ }
+ const buffer=amount*(slippagePct/100);
+ for(const r of valid) r.net=r.gross-gasReserve-buffer;
+ valid.sort((a,b)=>b.net-a.net);
+ const b=valid[0];
+ setText("bestPair",b.pair+" / USDC");
+ setText("bestRoute","Route "+b.route);
+ setText("bestFinal",b.final.toFixed(6)+" USDC");
+ setText("bestGross",(b.gross>=0?"+":"")+b.gross.toFixed(6)+" USDC",b.gross>0?"green":"red");
+ setText("gasCost","-"+gasReserve.toFixed(4)+" USDC");
+ setText("bufferCost","-"+buffer.toFixed(4)+" USDC ("+slippagePct.toFixed(2)+"%)");
+ setText("netPL",(b.net>=0?"+":"")+b.net.toFixed(6)+" USDC",b.net>0?"green":"red");
+ const pct=b.net/amount*100;
+ setText("netPct",(pct>=0?"+":"")+pct.toFixed(4)+"%",pct>0?"green":"red");
+ setText("opportunity",b.net>=minNet?"NET OPPORTUNITY ✓":"NO NET PROFIT",b.net>=minNet?"green":"red");
+ setText("updated",new Date().toLocaleTimeString());
 }
 
 async function scan(){
-
-  const button=
-  document.getElementById("scanBtn");
-
-  const log=
-  document.getElementById("log");
-
-  const amount=
-  Number(
-    document.getElementById("amount")
-      .value
-  );
-
-  const gasReserve=Number(document.getElementById("gasReserve").value);
-  const slippagePct=Number(document.getElementById("slippageBuffer").value);
-  const minNetProfit=Number(document.getElementById("minNetProfit").value);
-
-  if(
-    !Number.isFinite(amount) || amount<=0 ||
-    !Number.isFinite(gasReserve) || gasReserve<0 ||
-    !Number.isFinite(slippagePct) || slippagePct<0 ||
-    !Number.isFinite(minNetProfit) || minNetProfit<0
-  ){
-    log.textContent=
-    "Enter a valid USDC amount.";
-    return;
+ const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
+ const amount=Number(document.getElementById("amount").value);
+ const gas=Number(document.getElementById("gasReserve").value);
+ const slip=Number(document.getElementById("slippageBuffer").value);
+ const minNet=Number(document.getElementById("minNetProfit").value);
+ if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){log.textContent="Enter valid scan settings.";return;}
+ btn.disabled=true; btn.textContent="SCANNING 3 PAIRS…";
+ log.textContent="Scanning WETH, cbBTC and AERO round trips…";
+ try{
+  await updateNetwork();
+  const results=[];
+  for(const p of PAIRS){
+   log.textContent=`Scanning ${p.symbol}/USDC… (${results.length+1}/3)`;
+   results.push(await scanPair(p,amount));
+   await sleep(250);
   }
-
-  button.disabled=true;
-  button.textContent=
-  "SCANNING…";
-
-  resetDisplay(amount);
-
-  log.textContent=
-  "Scanning all four quote legs with multi-RPC failover…";
-
-  try{
-
-    await updateNetwork();
-
-    const startUSDC=
-    parseUnits(
-      amount.toString(),
-      6
-    );
-
-    /*
-      ROUTE A - LEG 1
-      USDC -> WETH on Uniswap
-    */
-    const a1=
-    await retryQuote(
-      "d1",
-      ()=>uniQuote(
-        USDC,
-        WETH,
-        startUSDC
-      )
-    );
-
-    /*
-      ROUTE A - LEG 2
-      WETH -> USDC on Aerodrome
-    */
-    let a2={
-      ok:false
-    };
-
-    if(a1.ok){
-
-      a2=
-      await retryQuote(
-        "d2",
-        ()=>aeroQuote(
-          WETH,
-          USDC,
-          a1.result.amountOut
-        )
-      );
-
-    }else{
-
-      setStatus(
-        "d2",
-        "SKIPPED",
-        "yellow"
-      );
-
-    }
-
-    /*
-      ROUTE B - LEG 1
-      USDC -> WETH on Aerodrome
-    */
-    const b1=
-    await retryQuote(
-      "d3",
-      ()=>aeroQuote(
-        USDC,
-        WETH,
-        startUSDC
-      )
-    );
-
-    /*
-      ROUTE B - LEG 2
-      WETH -> USDC on Uniswap
-    */
-    let b2={
-      ok:false
-    };
-
-    if(b1.ok){
-
-      b2=
-      await retryQuote(
-        "d4",
-        ()=>uniQuote(
-          WETH,
-          USDC,
-          b1.result
-        )
-      );
-
-    }else{
-
-      setStatus(
-        "d4",
-        "SKIPPED",
-        "yellow"
-      );
-
-    }
-
-    const routes=[];
-
-    const routeA=
-    showRouteA(
-      amount,
-      a1,
-      a2
-    );
-
-    const routeB=
-    showRouteB(
-      amount,
-      b1,
-      b2
-    );
-
-    if(routeA)
-      routes.push(routeA);
-
-    if(routeB)
-      routes.push(routeB);
-
-    showBest(routes, amount, gasReserve, slippagePct, minNetProfit);
-
-    document.getElementById("updated")
-      .textContent=
-      new Date()
-      .toLocaleTimeString();
-
-    const successCount=
-      [a1,a2,b1,b2]
-      .filter(x=>x.ok)
-      .length;
-
-    if(successCount===4){
-
-      log.textContent=
-      "SUCCESS: All 4 quote legs completed. "+
-      "Both round-trip routes are available. "+
-      "No transaction was executed.";
-
-    }
-    else if(routes.length>0){
-
-      log.textContent=
-      "PARTIAL SUCCESS: "+
-      successCount+
-      "/4 quote legs completed. "+
-      "Only complete routes were evaluated. "+
-      "No transaction was executed.";
-
-    }
-    else{
-
-      log.textContent=
-      "NO COMPLETE ROUTE: "+
-      successCount+
-      "/4 quote legs completed after automatic retries. "+
-      "No trade signal generated.";
-
-    }
-
-  }
-  catch(error){
-
-    log.textContent=
-    "Network scan error. No transaction was attempted.";
-
-  }
-
-  button.disabled=false;
-
-  button.textContent=
-  "SCAN ROUND-TRIP ARBITRAGE";
+  renderLeaderboard(results,amount,gas,slip,minNet);
+  renderBest(results,amount,gas,slip,minNet);
+  const complete=results.filter(r=>r.ok).length;
+  log.textContent=`SCAN COMPLETE: ${complete}/3 pairs produced at least one complete round trip. No transaction was executed.`;
+ }catch(e){
+  log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
+ }finally{
+  btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
+ }
 }
-
-document
-.getElementById("scanBtn")
-.addEventListener(
-  "click",
-  scan
-);
-
-updateNetwork()
-.catch(()=>{
-
-  setStatus(
-    "rpcStatus",
-    "ERROR",
-    "red"
-  );
-
-});
-
+document.getElementById("scanBtn").addEventListener("click",scan);
+updateNetwork().catch(()=>{});
 </script>
 </body>
 </html>
