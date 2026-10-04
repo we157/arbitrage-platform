@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.3.2</title>
+<title>Arbitrage Scanner V2.3.3</title>
 
 <style>
 *{box-sizing:border-box}
@@ -100,13 +100,13 @@ small{color:#71829d}
 
 <div class="header">
   <h1>⚡ Arbitrage<br>Scanner</h1>
-  <div class="badge">V2.3.2<br>AUTO<br>RETRY</div>
+  <div class="badge">V2.3.3<br>SMART<br>FALLBACK</div>
 </div>
 
 <div class="card notice">
 🔎 Live read-only round-trip scanner on Base.
-Each quote can retry automatically up to 3 times.
-One failed quote will no longer crash the entire scan.
+Aerodrome quotes use the Router default factory first, with explicit-factory fallback.
+Each quote can retry automatically up to 3 times without crashing the scan.
 No wallet or transaction is used.
 </div>
 
@@ -346,7 +346,7 @@ Gas and execution/slippage safety costs have not yet been deducted.
 
 <p style="text-align:center;margin:35px 0">
 <small>
-V2.3.2 • Reliable Round-Trip Scanner • No Real Trading
+V2.3.3 • Smart Aerodrome Fallback • No Real Trading
 </small>
 </p>
 
@@ -358,7 +358,8 @@ import {
   JsonRpcProvider,
   Contract,
   formatUnits,
-  parseUnits
+  parseUnits,
+  ZeroAddress
 }
 from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
 
@@ -510,22 +511,58 @@ async function aeroQuote(
   amountIn
 ){
 
-  const route=[{
-    from:tokenIn,
-    to:tokenOut,
-    stable:false,
-    factory:AERO_FACTORY
-  }];
+  /*
+    V2.3.3 reliability fix:
+    Use Aerodrome Router's approved/default factory first
+    (ZeroAddress), matching the stable V2.1 quote method.
+    If that RPC call fails, fall back once to the explicit
+    V2 Pool Factory before retryQuote performs its next attempt.
+  */
 
-  const amounts=
-  await aero.getAmountsOut(
-    amountIn,
-    route
-  );
-
-  return amounts[
-    amounts.length-1
+  const factories=[
+    ZeroAddress,
+    AERO_FACTORY
   ];
+
+  let lastError=null;
+
+  for(const factory of factories){
+
+    const route=[{
+      from:tokenIn,
+      to:tokenOut,
+      stable:false,
+      factory
+    }];
+
+    try{
+
+      const amounts=
+      await aero.getAmountsOut(
+        amountIn,
+        route
+      );
+
+      const output=
+      amounts[amounts.length-1];
+
+      if(output>0n)
+        return output;
+
+      throw new Error(
+        "Aerodrome returned zero output"
+      );
+
+    }
+    catch(error){
+      lastError=error;
+      await sleep(250);
+    }
+
+  }
+
+  throw lastError ||
+  new Error("Aerodrome quote unavailable");
 }
 
 async function uniQuote(
