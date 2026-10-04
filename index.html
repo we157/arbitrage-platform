@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.3.1</title>
+<title>Arbitrage Scanner V2.3.2</title>
 
 <style>
 *{box-sizing:border-box}
@@ -86,10 +86,10 @@ button:disabled{background:#41506a}
   overflow-wrap:anywhere;
   line-height:1.5;
 }
-.route{
-  font-size:16px;
-  line-height:1.6;
+.routeText{
   color:#b9c7dc;
+  line-height:1.6;
+  font-size:18px;
 }
 small{color:#71829d}
 </style>
@@ -99,17 +99,16 @@ small{color:#71829d}
 <div class="container">
 
 <div class="header">
-<h1>⚡ Arbitrage Scanner</h1>
-<div class="badge">V2.3.1<br>ROUND TRIP</div>
+  <h1>⚡ Arbitrage<br>Scanner</h1>
+  <div class="badge">V2.3.2<br>AUTO<br>RETRY</div>
 </div>
 
 <div class="card notice">
-🔎 Live read-only two-direction scanner on Base.
-V2.3.1 uses the explicit Aerodrome V2 Pool Factory
-and tests every quote leg independently.
+🔎 Live read-only round-trip scanner on Base.
+Each quote can retry automatically up to 3 times.
+One failed quote will no longer crash the entire scan.
 No wallet or transaction is used.
 </div>
-
 
 <div class="card">
 <h2>🌐 Base Network</h2>
@@ -126,7 +125,7 @@ No wallet or transaction is used.
 
 <div class="row">
 <span class="label">RPC</span>
-<span id="rpc" class="value yellow">WAITING</span>
+<span id="rpcStatus" class="value yellow">Waiting</span>
 </div>
 
 <div class="row">
@@ -135,14 +134,18 @@ No wallet or transaction is used.
 </div>
 </div>
 
-
 <div class="card">
 <h2>💰 Scan Settings</h2>
 
 <label class="label">Starting Capital (USDC)</label>
-<input id="amount" type="number" value="100" min="1">
+<input id="amount" type="number" value="100" min="1" step="1">
 
-<button id="scan">
+<div class="row">
+<span class="label">Maximum Attempts</span>
+<span class="value">3 per quote</span>
+</div>
+
+<button id="scanBtn">
 SCAN ROUND-TRIP ARBITRAGE
 </button>
 
@@ -151,41 +154,39 @@ Waiting for scan…
 </div>
 </div>
 
-
 <div class="card">
 <h2>🧪 Quote Diagnostics</h2>
 
 <div class="row">
 <span class="label">1. Uniswap<br>USDC → WETH</span>
-<span id="diag1" class="value">—</span>
+<span id="d1" class="value">WAITING</span>
 </div>
 
 <div class="row">
 <span class="label">2. Aerodrome<br>WETH → USDC</span>
-<span id="diag2" class="value">—</span>
+<span id="d2" class="value">WAITING</span>
 </div>
 
 <div class="row">
 <span class="label">3. Aerodrome<br>USDC → WETH</span>
-<span id="diag3" class="value">—</span>
+<span id="d3" class="value">WAITING</span>
 </div>
 
 <div class="row">
 <span class="label">4. Uniswap<br>WETH → USDC</span>
-<span id="diag4" class="value">—</span>
+<span id="d4" class="value">WAITING</span>
 </div>
 </div>
-
 
 <div class="card">
 <h2>🔵 Route A</h2>
 
-<p class="route">
+<div class="routeText">
 USDC<br>
 ↓ BUY WETH on Uniswap V3<br>
 ↓ SELL WETH on Aerodrome<br>
 → USDC
-</p>
+</div>
 
 <div class="row">
 <span class="label">Starting USDC</span>
@@ -219,20 +220,19 @@ USDC<br>
 
 <div class="row">
 <span class="label">Status</span>
-<span id="aStatus" class="value yellow">WAITING</span>
+<span id="aStatus" class="value">WAITING</span>
 </div>
 </div>
-
 
 <div class="card">
 <h2>🟣 Route B</h2>
 
-<p class="route">
+<div class="routeText">
 USDC<br>
 ↓ BUY WETH on Aerodrome<br>
 ↓ SELL WETH on Uniswap V3<br>
 → USDC
-</p>
+</div>
 
 <div class="row">
 <span class="label">Starting USDC</span>
@@ -266,16 +266,15 @@ USDC<br>
 
 <div class="row">
 <span class="label">Status</span>
-<span id="bStatus" class="value yellow">WAITING</span>
+<span id="bStatus" class="value">WAITING</span>
 </div>
 </div>
-
 
 <div class="card">
 <h2>🏆 Round-Trip Result</h2>
 
 <div class="row">
-<span class="label">Better Route</span>
+<span class="label">Better Complete Route</span>
 <span id="bestRoute" class="value">—</span>
 </div>
 
@@ -301,15 +300,15 @@ USDC<br>
 
 <div class="row">
 <span class="label">Last Scan</span>
-<span id="time" class="value">—</span>
+<span id="updated" class="value">—</span>
 </div>
 
 <p class="label">
-Gross quote only. Gas and execution/slippage
-safety costs are not yet deducted.
+Only complete routes are compared.
+Gross quote results are NOT net profit.
+Gas and execution/slippage safety costs have not yet been deducted.
 </p>
 </div>
-
 
 <div class="card">
 <h2>🛡️ Safety Status</h2>
@@ -335,6 +334,11 @@ safety costs are not yet deducted.
 </div>
 
 <div class="row">
+<span class="label">Auto Retry</span>
+<span class="value green">ACTIVE</span>
+</div>
+
+<div class="row">
 <span class="label">Mode</span>
 <span class="value green">READ ONLY</span>
 </div>
@@ -342,23 +346,21 @@ safety costs are not yet deducted.
 
 <p style="text-align:center;margin:35px 0">
 <small>
-V2.3.1 • Round-Trip Diagnostics • No Real Trading
+V2.3.2 • Reliable Round-Trip Scanner • No Real Trading
 </small>
 </p>
 
 </div>
-
 
 <script type="module">
 
 import {
   JsonRpcProvider,
   Contract,
-  parseUnits,
-  formatUnits
+  formatUnits,
+  parseUnits
 }
 from "https://cdn.jsdelivr.net/npm/ethers@6.15.0/+esm";
-
 
 const RPC =
 "https://mainnet.base.org";
@@ -372,127 +374,143 @@ const WETH =
 const AERO_ROUTER =
 "0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
 
-/*
-  IMPORTANT V2.3.1 CHANGE:
-  Explicit Aerodrome V2 Pool Factory.
-*/
 const AERO_FACTORY =
 "0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
 
 const UNI_QUOTER =
 "0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 
-
-const AERO_ABI = [
+const AERO_ABI=[
 "function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"
 ];
 
-const UNI_ABI = [
+const UNI_ABI=[
 "function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"
 ];
 
-
-const provider =
+const provider=
 new JsonRpcProvider(RPC);
 
-const aero =
+const aero=
 new Contract(
   AERO_ROUTER,
   AERO_ABI,
   provider
 );
 
-const uni =
+const uni=
 new Contract(
   UNI_QUOTER,
   UNI_ABI,
   provider
 );
 
+const sleep=ms=>
+new Promise(resolve=>
+setTimeout(resolve,ms));
 
-const FEES=[
-  100,
-  500,
-  3000,
-  10000
-];
-
-
-function status(id,text,ok){
-
-  const e=
-  document.getElementById(id);
-
-  e.textContent=text;
-
-  e.className=
-  ok
-  ? "value green"
-  : "value red";
+function setStatus(id,text,type=""){
+  const el=document.getElementById(id);
+  el.textContent=text;
+  el.className="value "+type;
 }
 
+async function updateNetwork(){
 
-function feeText(fee){
-
-  return (
-    Number(fee)/10000
-  ).toFixed(2)+"%";
-}
-
-
-function plColor(id,value,text){
-
-  const e=
-  document.getElementById(id);
-
-  e.textContent=text;
-
-  if(value>0)
-    e.className="value green";
-
-  else if(value<0)
-    e.className="value red";
-
-  else
-    e.className="value";
-}
-
-
-async function network(){
-
-  const n=
+  const network=
   await provider.getNetwork();
 
-  if(Number(n.chainId)!==8453)
-    throw new Error(
-      "Wrong network"
-    );
+  if(Number(network.chainId)!==8453)
+    throw new Error("Wrong network");
 
-  document
-  .getElementById("block")
-  .textContent=
-  (
-    await provider.getBlockNumber()
-  ).toLocaleString();
+  const block=
+  await provider.getBlockNumber();
 
-  status(
-    "rpc",
+  document.getElementById("block")
+    .textContent=
+    block.toLocaleString();
+
+  setStatus(
+    "rpcStatus",
     "LIVE ✓",
-    true
+    "green"
   );
 }
 
-
 /*
-  Explicit Aerodrome V2 factory.
+  Generic reliability wrapper.
+
+  A failed read is retried up to
+  three times with increasing delay.
 */
+async function retryQuote(
+  diagnosticId,
+  quoteFunction
+){
+
+  let lastError=null;
+
+  for(let attempt=1;attempt<=3;attempt++){
+
+    setStatus(
+      diagnosticId,
+      "ATTEMPT "+attempt+"/3",
+      "yellow"
+    );
+
+    try{
+
+      const result=
+      await quoteFunction();
+
+      setStatus(
+        diagnosticId,
+        attempt===1
+        ? "LIVE ✓"
+        : "LIVE ✓ ("+attempt+" attempts)",
+        "green"
+      );
+
+      return{
+        ok:true,
+        result,
+        attempts:attempt
+      };
+
+    }
+    catch(error){
+
+      lastError=error;
+
+      if(attempt<3){
+        await sleep(
+          700*attempt
+        );
+      }
+
+    }
+
+  }
+
+  setStatus(
+    diagnosticId,
+    "UNAVAILABLE ✕",
+    "red"
+  );
+
+  return{
+    ok:false,
+    error:lastError
+  };
+}
+
 async function aeroQuote(
   tokenIn,
   tokenOut,
   amountIn
 ){
 
-  const routes=[{
+  const route=[{
     from:tokenIn,
     to:tokenOut,
     stable:false,
@@ -502,22 +520,13 @@ async function aeroQuote(
   const amounts=
   await aero.getAmountsOut(
     amountIn,
-    routes
+    route
   );
 
-  if(
-    !amounts ||
-    amounts.length<2 ||
-    amounts[1]<=0n
-  ){
-    throw new Error(
-      "Aerodrome returned zero output"
-    );
-  }
-
-  return amounts[1];
+  return amounts[
+    amounts.length-1
+  ];
 }
-
 
 async function uniQuote(
   tokenIn,
@@ -525,9 +534,16 @@ async function uniQuote(
   amountIn
 ){
 
+  const fees=[
+    100,
+    500,
+    3000,
+    10000
+  ];
+
   let best=null;
 
-  for(const fee of FEES){
+  for(const fee of fees){
 
     try{
 
@@ -542,56 +558,347 @@ async function uniQuote(
         sqrtPriceLimitX96:0
       });
 
-      const output=
-      result[0];
+      const amountOut=result[0];
 
       if(
-        output>0n &&
+        amountOut>0n &&
         (
           best===null ||
-          output>best.amountOut
+          amountOut>best.amountOut
         )
       ){
         best={
-          amountOut:output,
-          fee:fee,
-          gas:result[3]
+          fee,
+          amountOut,
+          gasEstimate:result[3]
         };
       }
 
     }
-    catch(e){
-      /*
-        Continue testing other
-        Uniswap fee tiers.
-      */
+    catch(error){
+      // Invalid/unavailable pool.
     }
+
   }
 
   if(best===null)
     throw new Error(
-      "No Uniswap quote"
+      "No usable Uniswap quote"
     );
 
   return best;
 }
 
+function feeText(fee){
+  return(
+    Number(fee)/10000
+  ).toFixed(2)+"%";
+}
+
+function resetDisplay(amount){
+
+  ["d1","d2","d3","d4"].forEach(id=>
+    setStatus(id,"WAITING")
+  );
+
+  document.getElementById("aStart")
+    .textContent=
+    amount.toFixed(6)+" USDC";
+
+  document.getElementById("bStart")
+    .textContent=
+    amount.toFixed(6)+" USDC";
+
+  const ids=[
+    "aFee","aWeth","aFinal",
+    "aPL","aPct",
+    "bWeth","bFee","bFinal",
+    "bPL","bPct",
+    "bestRoute","bestFinal",
+    "bestPL","bestPct",
+    "opportunity","updated"
+  ];
+
+  ids.forEach(id=>
+    document.getElementById(id)
+      .textContent="—"
+  );
+
+  setStatus(
+    "aStatus",
+    "WAITING"
+  );
+
+  setStatus(
+    "bStatus",
+    "WAITING"
+  );
+}
+
+function showRouteA(
+  amount,
+  first,
+  second
+){
+
+  if(!first.ok || !second.ok){
+
+    setStatus(
+      "aStatus",
+      "INCOMPLETE",
+      "red"
+    );
+
+    return null;
+  }
+
+  const weth=
+  Number(
+    formatUnits(
+      first.result.amountOut,
+      18
+    )
+  );
+
+  const final=
+  Number(
+    formatUnits(
+      second.result,
+      6
+    )
+  );
+
+  const pl=
+  final-amount;
+
+  const pct=
+  (pl/amount)*100;
+
+  document.getElementById("aFee")
+    .textContent=
+    feeText(first.result.fee);
+
+  document.getElementById("aWeth")
+    .textContent=
+    weth.toFixed(8)+" WETH";
+
+  document.getElementById("aFinal")
+    .textContent=
+    final.toFixed(6)+" USDC";
+
+  const plEl=
+  document.getElementById("aPL");
+
+  plEl.textContent=
+  (pl>=0?"+":"")+
+  pl.toFixed(6)+" USDC";
+
+  plEl.className=
+  "value "+(pl>0?"green":"red");
+
+  const pctEl=
+  document.getElementById("aPct");
+
+  pctEl.textContent=
+  (pct>=0?"+":"")+
+  pct.toFixed(4)+"%";
+
+  pctEl.className=
+  "value "+(pct>0?"green":"red");
+
+  setStatus(
+    "aStatus",
+    "COMPLETE ✓",
+    "green"
+  );
+
+  return{
+    name:"Route A",
+    final,
+    pl,
+    pct
+  };
+}
+
+function showRouteB(
+  amount,
+  first,
+  second
+){
+
+  if(!first.ok || !second.ok){
+
+    setStatus(
+      "bStatus",
+      "INCOMPLETE",
+      "red"
+    );
+
+    return null;
+  }
+
+  const weth=
+  Number(
+    formatUnits(
+      first.result,
+      18
+    )
+  );
+
+  const final=
+  Number(
+    formatUnits(
+      second.result.amountOut,
+      6
+    )
+  );
+
+  const pl=
+  final-amount;
+
+  const pct=
+  (pl/amount)*100;
+
+  document.getElementById("bWeth")
+    .textContent=
+    weth.toFixed(8)+" WETH";
+
+  document.getElementById("bFee")
+    .textContent=
+    feeText(second.result.fee);
+
+  document.getElementById("bFinal")
+    .textContent=
+    final.toFixed(6)+" USDC";
+
+  const plEl=
+  document.getElementById("bPL");
+
+  plEl.textContent=
+  (pl>=0?"+":"")+
+  pl.toFixed(6)+" USDC";
+
+  plEl.className=
+  "value "+(pl>0?"green":"red");
+
+  const pctEl=
+  document.getElementById("bPct");
+
+  pctEl.textContent=
+  (pct>=0?"+":"")+
+  pct.toFixed(4)+"%";
+
+  pctEl.className=
+  "value "+(pct>0?"green":"red");
+
+  setStatus(
+    "bStatus",
+    "COMPLETE ✓",
+    "green"
+  );
+
+  return{
+    name:"Route B",
+    final,
+    pl,
+    pct
+  };
+}
+
+function showBest(routes){
+
+  if(routes.length===0){
+
+    setStatus(
+      "bestRoute",
+      "NO COMPLETE ROUTE",
+      "red"
+    );
+
+    setStatus(
+      "opportunity",
+      "NO SIGNAL",
+      "red"
+    );
+
+    return;
+  }
+
+  routes.sort(
+    (a,b)=>b.final-a.final
+  );
+
+  const best=routes[0];
+
+  document.getElementById("bestRoute")
+    .textContent=best.name;
+
+  document.getElementById("bestFinal")
+    .textContent=
+    best.final.toFixed(6)+
+    " USDC";
+
+  const p=
+  document.getElementById("bestPL");
+
+  p.textContent=
+  (best.pl>=0?"+":"")+
+  best.pl.toFixed(6)+
+  " USDC";
+
+  p.className=
+  "value "+(
+    best.pl>0
+    ? "green"
+    : "red"
+  );
+
+  const r=
+  document.getElementById("bestPct");
+
+  r.textContent=
+  (best.pct>=0?"+":"")+
+  best.pct.toFixed(4)+"%";
+
+  r.className=
+  "value "+(
+    best.pct>0
+    ? "green"
+    : "red"
+  );
+
+  if(best.pl>0){
+
+    setStatus(
+      "opportunity",
+      "GROSS OPPORTUNITY ✓",
+      "green"
+    );
+
+  }else{
+
+    setStatus(
+      "opportunity",
+      "NO GROSS PROFIT",
+      "red"
+    );
+
+  }
+}
 
 async function scan(){
 
   const button=
-  document.getElementById("scan");
+  document.getElementById("scanBtn");
 
   const log=
   document.getElementById("log");
 
   const amount=
   Number(
-    document
-    .getElementById("amount")
-    .value
+    document.getElementById("amount")
+      .value
   );
-
 
   if(
     !Number.isFinite(amount) ||
@@ -602,456 +909,182 @@ async function scan(){
     return;
   }
 
-
   button.disabled=true;
-
   button.textContent=
   "SCANNING…";
 
+  resetDisplay(amount);
+
   log.textContent=
-  "Testing four live quote legs independently…";
-
-
-  ["diag1","diag2","diag3","diag4"]
-  .forEach(id=>{
-    const e=
-    document.getElementById(id);
-
-    e.textContent="TESTING…";
-    e.className="value yellow";
-  });
-
-
-  document.getElementById("aStart")
-  .textContent=
-  amount.toFixed(6)+" USDC";
-
-  document.getElementById("bStart")
-  .textContent=
-  amount.toFixed(6)+" USDC";
-
+  "Scanning all four quote legs with automatic retry…";
 
   try{
 
-    await network();
+    await updateNetwork();
 
-    const startRaw=
+    const startUSDC=
     parseUnits(
       amount.toString(),
       6
     );
 
-
     /*
-      LEG 1:
-      Uniswap
-      USDC → WETH
+      ROUTE A - LEG 1
+      USDC -> WETH on Uniswap
     */
-
-    let uniBuy;
-
-    try{
-
-      uniBuy=
-      await uniQuote(
+    const a1=
+    await retryQuote(
+      "d1",
+      ()=>uniQuote(
         USDC,
         WETH,
-        startRaw
-      );
-
-      status(
-        "diag1",
-        "LIVE ✓",
-        true
-      );
-
-    }
-    catch(e){
-
-      status(
-        "diag1",
-        "FAILED ✕",
-        false
-      );
-
-      throw new Error(
-        "Uniswap USDC→WETH failed: "+
-        e.message
-      );
-    }
-
-
-    /*
-      LEG 2:
-      Aerodrome
-      WETH → USDC
-
-      Uses exact output from Leg 1.
-    */
-
-    let aeroSell;
-
-    try{
-
-      aeroSell=
-      await aeroQuote(
-        WETH,
-        USDC,
-        uniBuy.amountOut
-      );
-
-      status(
-        "diag2",
-        "LIVE ✓",
-        true
-      );
-
-    }
-    catch(e){
-
-      status(
-        "diag2",
-        "FAILED ✕",
-        false
-      );
-
-      throw new Error(
-        "Aerodrome WETH→USDC failed: "+
-        e.message
-      );
-    }
-
-
-    /*
-      LEG 3:
-      Aerodrome
-      USDC → WETH
-    */
-
-    let aeroBuy;
-
-    try{
-
-      aeroBuy=
-      await aeroQuote(
-        USDC,
-        WETH,
-        startRaw
-      );
-
-      status(
-        "diag3",
-        "LIVE ✓",
-        true
-      );
-
-    }
-    catch(e){
-
-      status(
-        "diag3",
-        "FAILED ✕",
-        false
-      );
-
-      throw new Error(
-        "Aerodrome USDC→WETH failed: "+
-        e.message
-      );
-    }
-
-
-    /*
-      LEG 4:
-      Uniswap
-      WETH → USDC
-
-      Uses exact output from Leg 3.
-    */
-
-    let uniSell;
-
-    try{
-
-      uniSell=
-      await uniQuote(
-        WETH,
-        USDC,
-        aeroBuy
-      );
-
-      status(
-        "diag4",
-        "LIVE ✓",
-        true
-      );
-
-    }
-    catch(e){
-
-      status(
-        "diag4",
-        "FAILED ✕",
-        false
-      );
-
-      throw new Error(
-        "Uniswap WETH→USDC failed: "+
-        e.message
-      );
-    }
-
-
-    /*
-      ROUTE A RESULTS
-    */
-
-    const aWeth=
-    Number(
-      formatUnits(
-        uniBuy.amountOut,
-        18
+        startUSDC
       )
     );
 
-    const aFinal=
-    Number(
-      formatUnits(
-        aeroSell,
-        6
-      )
-    );
+    /*
+      ROUTE A - LEG 2
+      WETH -> USDC on Aerodrome
+    */
+    let a2={
+      ok:false
+    };
 
-    const aPL=
-    aFinal-amount;
+    if(a1.ok){
 
-    const aPct=
-    aPL/amount*100;
+      a2=
+      await retryQuote(
+        "d2",
+        ()=>aeroQuote(
+          WETH,
+          USDC,
+          a1.result.amountOut
+        )
+      );
 
+    }else{
 
-    document
-    .getElementById("aFee")
-    .textContent=
-    feeText(uniBuy.fee);
+      setStatus(
+        "d2",
+        "SKIPPED",
+        "yellow"
+      );
 
-    document
-    .getElementById("aWeth")
-    .textContent=
-    aWeth.toFixed(8)+
-    " WETH";
-
-    document
-    .getElementById("aFinal")
-    .textContent=
-    aFinal.toFixed(6)+
-    " USDC";
-
-    plColor(
-      "aPL",
-      aPL,
-      (
-        aPL>=0 ? "+" : ""
-      )+
-      aPL.toFixed(6)+
-      " USDC"
-    );
-
-    plColor(
-      "aPct",
-      aPct,
-      (
-        aPct>=0 ? "+" : ""
-      )+
-      aPct.toFixed(4)+
-      "%"
-    );
-
-    status(
-      "aStatus",
-      "LIVE ✓",
-      true
-    );
-
+    }
 
     /*
-      ROUTE B RESULTS
+      ROUTE B - LEG 1
+      USDC -> WETH on Aerodrome
     */
-
-    const bWeth=
-    Number(
-      formatUnits(
-        aeroBuy,
-        18
+    const b1=
+    await retryQuote(
+      "d3",
+      ()=>aeroQuote(
+        USDC,
+        WETH,
+        startUSDC
       )
     );
-
-    const bFinal=
-    Number(
-      formatUnits(
-        uniSell.amountOut,
-        6
-      )
-    );
-
-    const bPL=
-    bFinal-amount;
-
-    const bPct=
-    bPL/amount*100;
-
-
-    document
-    .getElementById("bWeth")
-    .textContent=
-    bWeth.toFixed(8)+
-    " WETH";
-
-    document
-    .getElementById("bFee")
-    .textContent=
-    feeText(uniSell.fee);
-
-    document
-    .getElementById("bFinal")
-    .textContent=
-    bFinal.toFixed(6)+
-    " USDC";
-
-    plColor(
-      "bPL",
-      bPL,
-      (
-        bPL>=0 ? "+" : ""
-      )+
-      bPL.toFixed(6)+
-      " USDC"
-    );
-
-    plColor(
-      "bPct",
-      bPct,
-      (
-        bPct>=0 ? "+" : ""
-      )+
-      bPct.toFixed(4)+
-      "%"
-    );
-
-    status(
-      "bStatus",
-      "LIVE ✓",
-      true
-    );
-
 
     /*
-      BEST ROUTE
+      ROUTE B - LEG 2
+      WETH -> USDC on Uniswap
     */
+    let b2={
+      ok:false
+    };
 
-    const useA=
-    aFinal>=bFinal;
+    if(b1.ok){
 
-    const bestName=
-    useA
-    ? "Route A"
-    : "Route B";
+      b2=
+      await retryQuote(
+        "d4",
+        ()=>uniQuote(
+          WETH,
+          USDC,
+          b1.result
+        )
+      );
 
-    const bestFinal=
-    useA
-    ? aFinal
-    : bFinal;
+    }else{
 
-    const bestPL=
-    useA
-    ? aPL
-    : bPL;
+      setStatus(
+        "d4",
+        "SKIPPED",
+        "yellow"
+      );
 
-    const bestPct=
-    useA
-    ? aPct
-    : bPct;
+    }
 
+    const routes=[];
 
-    document
-    .getElementById("bestRoute")
-    .textContent=
-    bestName;
-
-    document
-    .getElementById("bestFinal")
-    .textContent=
-    bestFinal.toFixed(6)+
-    " USDC";
-
-    plColor(
-      "bestPL",
-      bestPL,
-      (
-        bestPL>=0 ? "+" : ""
-      )+
-      bestPL.toFixed(6)+
-      " USDC"
+    const routeA=
+    showRouteA(
+      amount,
+      a1,
+      a2
     );
 
-    plColor(
-      "bestPct",
-      bestPct,
-      (
-        bestPct>=0 ? "+" : ""
-      )+
-      bestPct.toFixed(4)+
-      "%"
+    const routeB=
+    showRouteB(
+      amount,
+      b1,
+      b2
     );
 
+    if(routeA)
+      routes.push(routeA);
 
-    const opp=
-    document.getElementById(
-      "opportunity"
-    );
+    if(routeB)
+      routes.push(routeB);
 
-    if(bestPL>0){
+    showBest(routes);
 
-      opp.textContent=
-      "POSITIVE GROSS ✓";
+    document.getElementById("updated")
+      .textContent=
+      new Date()
+      .toLocaleTimeString();
 
-      opp.className=
-      "value green";
+    const successCount=
+      [a1,a2,b1,b2]
+      .filter(x=>x.ok)
+      .length;
+
+    if(successCount===4){
+
+      log.textContent=
+      "SUCCESS: All 4 quote legs completed. "+
+      "Both round-trip routes are available. "+
+      "No transaction was executed.";
+
+    }
+    else if(routes.length>0){
+
+      log.textContent=
+      "PARTIAL SUCCESS: "+
+      successCount+
+      "/4 quote legs completed. "+
+      "Only complete routes were evaluated. "+
+      "No transaction was executed.";
 
     }
     else{
 
-      opp.textContent=
-      "NO GROSS PROFIT";
-
-      opp.className=
-      "value red";
+      log.textContent=
+      "NO COMPLETE ROUTE: "+
+      successCount+
+      "/4 quote legs completed after automatic retries. "+
+      "No trade signal generated.";
 
     }
-
-
-    document
-    .getElementById("time")
-    .textContent=
-    new Date()
-    .toLocaleTimeString();
-
-
-    log.textContent=
-    "SUCCESS: All four live quote legs completed. "+
-    "No transaction was executed. "+
-    "Results are gross quotes only.";
-
 
   }
   catch(error){
 
     log.textContent=
-    "SCAN STOPPED: "+
-    error.message+
-    ". No transaction was attempted.";
+    "Network scan error. No transaction was attempted.";
 
   }
-
 
   button.disabled=false;
 
@@ -1059,33 +1092,24 @@ async function scan(){
   "SCAN ROUND-TRIP ARBITRAGE";
 }
 
-
 document
-.getElementById("scan")
+.getElementById("scanBtn")
 .addEventListener(
   "click",
   scan
 );
 
+updateNetwork()
+.catch(()=>{
 
-network()
-.catch(error=>{
-
-  status(
-    "rpc",
+  setStatus(
+    "rpcStatus",
     "ERROR",
-    false
+    "red"
   );
-
-  document
-  .getElementById("log")
-  .textContent=
-  "Base connection error: "+
-  error.message;
 
 });
 
 </script>
-
 </body>
 </html>
