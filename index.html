@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.7.2</title>
+<title>Arbitrage Scanner V2.8</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.7.2<br>FAST PARALLEL<br>SCANNER</div>
+<div class="badge">V2.8<br>8-PAIR<br>OPPORTUNITY HUNTER</div>
 </div>
 
 <div class="card notice">
-⚡ Live read-only fast parallel scanner on Base. V2.7.2 keeps the V2.6 venues and safety filters, but scans independent pairs, routes, Uniswap fee tiers and Aerodrome quote paths concurrently. Multi-RPC retry remains available after failures. Scan duration and a 30-second freshness guard are shown. No wallet, approval or transaction is used.
+🎯 Live read-only opportunity hunter on Base. V2.8 keeps the proven V2.7.2 fast parallel, multi-RPC and retry engine, but expands coverage from 3 to 8 pairs. It compares Uniswap V3 against Aerodrome V2 and Slipstream in both round-trip directions, ranks only complete routes by estimated net P/L, and blocks stale signals after 30 seconds. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -49,7 +49,7 @@ small{color:#71829d}
 <h2>💰 Scan Settings</h2>
 <label class="label">Starting Capital per Pair (USDC)</label>
 <input id="amount" type="number" value="100" min="1" step="1">
-<div class="row"><span class="label">Pairs</span><span class="value">3</span></div>
+<div class="row"><span class="label">Pairs</span><span class="value">8</span></div>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -67,6 +67,11 @@ small{color:#71829d}
 <div class="pair"><div class="pairTop"><span class="pairName">WETH / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">cbBTC / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">AERO / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">cbETH / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">wstETH / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">EURC / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">DAI / USDC</span><span class="value yellow">WAITING</span></div></div>
+<div class="pair"><div class="pairTop"><span class="pairName">USDbC / USDC</span><span class="value yellow">WAITING</span></div></div>
 </div>
 </div>
 
@@ -99,7 +104,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.7.2 • Fast Parallel Scanner • Startup Fix • 30s Freshness Guard • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.8 • 8-Pair Opportunity Hunter • V2.7.2 Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
 </div>
 
 <script type="module">
@@ -116,6 +121,11 @@ const USDC="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 const WETH="0x4200000000000000000000000000000000000006";
 const CBBTC="0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
 const AERO="0x940181a94A35A4569E4529A3CDfB74e38FD98631";
+const CBETH="0x2Ae3F1Ec7F1F5012CFEab0185bfc7aa3cf0DEc22";
+const WSTETH="0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452";
+const EURC="0x60a3e35cc302bfa44cb288bc5a4f316fdb1adb42";
+const DAI="0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb";
+const USDBC="0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA";
 const AERO_ROUTER="0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
 const AERO_FACTORY="0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
 const AERO_SLIP_QUOTER="0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0";
@@ -124,7 +134,12 @@ const UNI_QUOTER="0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 const PAIRS=[
  {symbol:"WETH",address:WETH,decimals:18},
  {symbol:"cbBTC",address:CBBTC,decimals:8},
- {symbol:"AERO",address:AERO,decimals:18}
+ {symbol:"AERO",address:AERO,decimals:18},
+ {symbol:"cbETH",address:CBETH,decimals:18},
+ {symbol:"wstETH",address:WSTETH,decimals:18},
+ {symbol:"EURC",address:EURC,decimals:6},
+ {symbol:"DAI",address:DAI,decimals:18},
+ {symbol:"USDbC",address:USDBC,decimals:6}
 ];
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
@@ -327,8 +342,8 @@ async function scan(){
  if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent="FAST SCANNING 3 PAIRS…";
- log.textContent="Parallel scan running: WETH, cbBTC and AERO…";
+ btn.disabled=true; btn.textContent="FAST SCANNING 8 PAIRS…";
+ log.textContent="Parallel scan running: WETH, cbBTC, AERO, cbETH, wstETH, EURC, DAI and USDbC…";
  const started=performance.now();
  try{
   await updateNetwork();
@@ -338,7 +353,7 @@ async function scan(){
   renderBest(results,amount,gas,slip,minNet,durationSec);
   const complete=results.filter(r=>r.ok).length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/3 pairs · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/8 pairs · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
