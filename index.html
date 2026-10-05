@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.9</title>
+<title>Arbitrage Scanner V2.9.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.9<br>ROUTE QUALITY<br>FILTER</div>
+<div class="badge">V2.9.1<br>ROUTE QUALITY<br>FILTER</div>
 </div>
 
 <div class="card notice">
-🛡️ Live read-only Base scanner with route-quality protection. V2.9 keeps the proven V2.8 8-pair fast engine, but rejects abnormal round trips before ranking them. Complete routes that lose more than the Maximum Gross Loss threshold are marked POOR LIQUIDITY instead of being treated as normal opportunities. No wallet, approval or transaction is used.
+🛡️ Live read-only Base scanner with route-quality protection. V2.9.1 keeps the proven V2.8 8-pair fast engine, but rejects abnormal round trips before ranking them. Complete routes that lose more than the Maximum Gross Loss threshold are marked POOR LIQUIDITY instead of being treated as normal opportunities. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -57,6 +57,9 @@ small{color:#71829d}
 <input id="slippageBuffer" type="number" value="0.10" min="0" step="0.01">
 <label class="label" style="display:block;margin-top:14px">Minimum Net Profit (USDC)</label>
 <input id="minNetProfit" type="number" value="0.10" min="0" step="0.01">
+<label>Maximum Gross Loss / Route Quality (%)</label>
+<input id="maxGrossLossPct" type="number" value="2.00" min="0.10" step="0.10">
+<div class="note">Routes losing more than 2.00% gross are marked POOR LIQUIDITY and excluded from ranking.</div>
 <button id="scanBtn">SCAN ALL PAIRS</button>
 <div id="log" class="log">Waiting for scan…</div>
 </div>
@@ -104,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.9 • Route Quality Filter • 8-Pair Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.9.1 • Route Quality Filter • Scan Fix • 8-Pair Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
 </div>
 
 <script type="module">
