@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.1</title>
+<title>Arbitrage Scanner V3.2</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.1<br>8-PAIR MULTI-DEX<br>SCANNER</div>
+<div class="badge">V3.2<br>8-PAIR MULTI-DEX<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.1 keeps the proven 3-DEX engine and restores 8-pair coverage with three new candidates: USDS, WELL and VIRTUAL. Every pair is tested across Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3, with the 2% route-quality filter protecting the ranking. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.2 keeps the proven 3-DEX engine and 8-pair coverage, replacing the repeatedly unavailable WELL pair with DEGEN. Every pair is tested across Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3, with the 2% route-quality filter protecting the ranking. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -82,7 +82,7 @@ small{color:#71829d}
 <h2>🏆 Best Complete Result</h2>
 <div class="row"><span class="label">Pair</span><span id="bestPair" class="value">—</span></div>
 <div class="row"><span class="label">Best DEX Route</span><span id="bestRoute" class="value">—</span></div>
-<div class="row"><span class="label">Aerodrome Venue</span><span id="bestAeroVenue" class="value">—</span></div>
+
 <div class="row"><span class="label">Best Final USDC</span><span id="bestFinal" class="value">—</span></div>
 <div class="row"><span class="label">Gross P/L</span><span id="bestGross" class="value">—</span></div>
 <div class="row"><span class="label">Gas Reserve</span><span id="gasCost" class="value">—</span></div>
@@ -107,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.1 • 8-Pair Base Multi-DEX • Uniswap V3 + Aerodrome + PancakeSwap V3 • Quality Filter • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.2 • 8-Pair Base Multi-DEX • WELL→DEGEN • Uniswap V3 + Aerodrome + PancakeSwap V3 • Quality Filter • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -142,7 +142,7 @@ const PAIRS=[
  {symbol:"EURC",address:EURC,decimals:6},
  {symbol:"USDbC",address:USDBC,decimals:6},
  {symbol:"USDS",address:"0x820C137fa70C8691f0e44Dc420a5e53c168921Dc",decimals:18},
- {symbol:"WELL",address:"0xA88594D404727625A9437C3f886C7643872296AE",decimals:18},
+ {symbol:"DEGEN",address:"0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed",decimals:18},
  {symbol:"VIRTUAL",address:"0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",decimals:18},];
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
