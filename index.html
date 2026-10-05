@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.5</title>
+<title>Arbitrage Scanner V2.6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.5<br>MULTI-PAIR<br>SCANNER</div>
+<div class="badge">V2.6<br>OPPORTUNITY<br>HUNTER</div>
 </div>
 
 <div class="card notice">
-🔎 Live read-only multi-pair round-trip scanner on Base. V2.5 scans WETH/USDC, cbBTC/USDC and AERO/USDC across Uniswap V3 and Aerodrome. It keeps V2.4 multi-RPC failover, smart Aerodrome factory fallback, 3 attempts per quote, and estimated net-profit filtering. No wallet, approval or transaction is used.
+🎯 Live read-only opportunity hunter on Base. V2.6 keeps the proven V2.5 multi-RPC and retry engine, scans WETH/USDC, cbBTC/USDC and AERO/USDC, and tests both Aerodrome V2 and Slipstream concentrated-liquidity quotes against Uniswap V3. It ranks only complete round trips by estimated net P/L. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -74,6 +74,7 @@ small{color:#71829d}
 <h2>🏆 Best Complete Result</h2>
 <div class="row"><span class="label">Pair</span><span id="bestPair" class="value">—</span></div>
 <div class="row"><span class="label">Better Route</span><span id="bestRoute" class="value">—</span></div>
+<div class="row"><span class="label">Aerodrome Venue</span><span id="bestAeroVenue" class="value">—</span></div>
 <div class="row"><span class="label">Best Final USDC</span><span id="bestFinal" class="value">—</span></div>
 <div class="row"><span class="label">Gross P/L</span><span id="bestGross" class="value">—</span></div>
 <div class="row"><span class="label">Gas Reserve</span><span id="gasCost" class="value">—</span></div>
@@ -95,7 +96,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.5 • Multi-Pair Scanner • Net Profit Filter • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.6 • Opportunity Hunter • V2 + Slipstream Quotes • No Real Trading</small></p>
 </div>
 
 <script type="module">
@@ -114,6 +115,7 @@ const CBBTC="0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf";
 const AERO="0x940181a94A35A4569E4529A3CDfB74e38FD98631";
 const AERO_ROUTER="0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
 const AERO_FACTORY="0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
+const AERO_SLIP_QUOTER="0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0";
 const UNI_QUOTER="0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 
 const PAIRS=[
@@ -124,13 +126,15 @@ const PAIRS=[
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
 const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
+const SLIP_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,int24 tickSpacing,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 
-let provider,aero,uni;
+let provider,aero,uni,slip;
 function activateRpc(i){
  activeRpcIndex=i%RPCS.length;
  provider=new JsonRpcProvider(RPCS[activeRpcIndex].url,8453,{staticNetwork:true});
  aero=new Contract(AERO_ROUTER,AERO_ABI,provider);
  uni=new Contract(UNI_QUOTER,UNI_ABI,provider);
+ slip=new Contract(AERO_SLIP_QUOTER,SLIP_ABI,provider);
  return RPCS[activeRpcIndex];
 }
 activateRpc(0);
@@ -182,6 +186,28 @@ async function aeroQuote(tokenIn,tokenOut,amountIn){
  throw last||new Error("Aerodrome quote failed");
 }
 
+async function slipQuote(tokenIn,tokenOut,amountIn){
+ let best=null;
+ for(const tickSpacing of [1,10,50,100,200]){
+  try{
+   const q=await slip.quoteExactInputSingle.staticCall({tokenIn,tokenOut,amountIn,tickSpacing,sqrtPriceLimitX96:0});
+   const amountOut=q[0];
+   if(amountOut>0n && (!best||amountOut>best.amountOut)) best={amountOut,tickSpacing};
+  }catch(e){}
+ }
+ if(!best) throw new Error("No Slipstream quote");
+ return best;
+}
+
+async function aeroBestQuote(tokenIn,tokenOut,amountIn){
+ let v2=null,cl=null;
+ try{v2=await aeroQuote(tokenIn,tokenOut,amountIn);}catch(e){}
+ try{cl=await slipQuote(tokenIn,tokenOut,amountIn);}catch(e){}
+ if(!v2&&!cl) throw new Error("No Aerodrome quote");
+ if(cl && (!v2 || cl.amountOut>v2)) return {amountOut:cl.amountOut,venue:"Slipstream"};
+ return {amountOut:v2,venue:"V2"};
+}
+
 async function uniQuote(tokenIn,tokenOut,amountIn){
  let best=null;
  for(const fee of [100,500,3000,10000]){
@@ -203,20 +229,20 @@ async function scanPair(pair,amount){
 
  const a1=await withRetry(()=>uniQuote(USDC,pair.address,start));
  let a2={ok:false};
- if(a1.ok) a2=await withRetry(()=>aeroQuote(pair.address,USDC,a1.result.amountOut));
+ if(a1.ok) a2=await withRetry(()=>aeroBestQuote(pair.address,USDC,a1.result.amountOut));
 
- const b1=await withRetry(()=>aeroQuote(USDC,pair.address,start));
+ const b1=await withRetry(()=>aeroBestQuote(USDC,pair.address,start));
  let b2={ok:false};
- if(b1.ok) b2=await withRetry(()=>uniQuote(pair.address,USDC,b1.result));
+ if(b1.ok) b2=await withRetry(()=>uniQuote(pair.address,USDC,b1.result.amountOut));
 
  const routes=[];
  if(a1.ok&&a2.ok){
-  const final=Number(formatUnits(a2.result,6));
-  routes.push({route:"A",final,gross:final-amount,fee:feeText(a1.result.fee)});
+  const final=Number(formatUnits(a2.result.amountOut,6));
+  routes.push({route:"A",final,gross:final-amount,fee:feeText(a1.result.fee),aeroVenue:a2.result.venue});
  }
  if(b1.ok&&b2.ok){
   const final=Number(formatUnits(b2.result.amountOut,6));
-  routes.push({route:"B",final,gross:final-amount,fee:feeText(b2.result.fee)});
+  routes.push({route:"B",final,gross:final-amount,fee:feeText(b2.result.fee),aeroVenue:b1.result.venue});
  }
  if(!routes.length) return {pair:pair.symbol,ok:false};
  routes.sort((x,y)=>y.final-x.final);
@@ -235,7 +261,7 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
    const net=r.gross-gasReserve-buffer;
    const good=net>=minNet;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
-   <div class="pairMeta">Best Route ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.completeRoutes}/2 routes complete</div>`;
+   <div class="pairMeta">Best Route ${r.route} · Aerodrome ${r.aeroVenue} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.completeRoutes}/2 routes complete</div>`;
    r.net=net;
   }
   board.appendChild(div);
@@ -245,7 +271,7 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
 function renderBest(results,amount,gasReserve,slippagePct,minNet){
  const valid=results.filter(r=>r.ok);
  if(!valid.length){
-  ["bestPair","bestRoute","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
+  ["bestPair","bestRoute","bestAeroVenue","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
   setText("opportunity","NO COMPLETE ROUTE","yellow");
   setText("updated",new Date().toLocaleTimeString());
   return;
@@ -256,6 +282,7 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet){
  const b=valid[0];
  setText("bestPair",b.pair+" / USDC");
  setText("bestRoute","Route "+b.route);
+ setText("bestAeroVenue",b.aeroVenue);
  setText("bestFinal",b.final.toFixed(6)+" USDC");
  setText("bestGross",(b.gross>=0?"+":"")+b.gross.toFixed(6)+" USDC",b.gross>0?"green":"red");
  setText("gasCost","-"+gasReserve.toFixed(4)+" USDC");
@@ -275,7 +302,7 @@ async function scan(){
  const minNet=Number(document.getElementById("minNetProfit").value);
  if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){log.textContent="Enter valid scan settings.";return;}
  btn.disabled=true; btn.textContent="SCANNING 3 PAIRS…";
- log.textContent="Scanning WETH, cbBTC and AERO round trips…";
+ log.textContent="Hunting WETH, cbBTC and AERO opportunities across Aerodrome V2 + Slipstream…";
  try{
   await updateNetwork();
   const results=[];
@@ -287,7 +314,7 @@ async function scan(){
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet);
   const complete=results.filter(r=>r.ok).length;
-  log.textContent=`SCAN COMPLETE: ${complete}/3 pairs produced at least one complete round trip. No transaction was executed.`;
+  log.textContent=`HUNT COMPLETE: ${complete}/3 pairs produced at least one complete round trip. No transaction was executed.`;
  }catch(e){
   log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
  }finally{
