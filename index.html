@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.6</title>
+<title>Arbitrage Scanner V2.7</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.6<br>OPPORTUNITY<br>HUNTER</div>
+<div class="badge">V2.7<br>FAST PARALLEL<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-🎯 Live read-only opportunity hunter on Base. V2.6 keeps the proven V2.5 multi-RPC and retry engine, scans WETH/USDC, cbBTC/USDC and AERO/USDC, and tests both Aerodrome V2 and Slipstream concentrated-liquidity quotes against Uniswap V3. It ranks only complete round trips by estimated net P/L. No wallet, approval or transaction is used.
+⚡ Live read-only fast parallel scanner on Base. V2.7 keeps the V2.6 venues and safety filters, but scans independent pairs, routes, Uniswap fee tiers and Aerodrome quote paths concurrently. Multi-RPC retry remains available after failures. Scan duration and a 30-second freshness guard are shown. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -82,8 +82,10 @@ small{color:#71829d}
 <div class="row"><span class="label">Estimated Net P/L</span><span id="netPL" class="value">—</span></div>
 <div class="row"><span class="label">Estimated Net Return</span><span id="netPct" class="value">—</span></div>
 <div class="row"><span class="label">Opportunity</span><span id="opportunity" class="value">—</span></div>
+<div class="row"><span class="label">Scan Duration</span><span id="scanDuration" class="value">—</span></div>
+<div class="row"><span class="label">Quote Freshness</span><span id="freshness" class="value">—</span></div>
 <div class="row"><span class="label">Last Scan</span><span id="updated" class="value">—</span></div>
-<p class="label">Only complete round trips are ranked. A pair can show UNAVAILABLE if one venue cannot return a usable quote. Estimated net P/L is still a scanner estimate, not guaranteed executable profit.</p>
+<p class="label">Only complete round trips are ranked. A positive signal is suppressed if the full scan takes more than 30 seconds. Estimated net P/L is still a scanner estimate, not guaranteed executable profit.</p>
 </div>
 
 <div class="card">
@@ -93,10 +95,11 @@ small{color:#71829d}
 <div class="row"><span class="label">Approvals</span><span class="value">None</span></div>
 <div class="row"><span class="label">Transactions</span><span class="value red">DISABLED</span></div>
 <div class="row"><span class="label">Multi-RPC Failover</span><span class="value green">ACTIVE</span></div>
+<div class="row"><span class="label">30s Freshness Guard</span><span class="value green">ACTIVE</span></div>
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.6 • Opportunity Hunter • V2 + Slipstream Quotes • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.7 • Fast Parallel Scanner • 30s Freshness Guard • No Real Trading</small></p>
 </div>
 
 <script type="module">
@@ -128,16 +131,19 @@ const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address t
 const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 const SLIP_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,int24 tickSpacing,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 
-let provider,aero,uni,slip;
-function activateRpc(i){
- activeRpcIndex=i%RPCS.length;
- provider=new JsonRpcProvider(RPCS[activeRpcIndex].url,8453,{staticNetwork:true});
- aero=new Contract(AERO_ROUTER,AERO_ABI,provider);
- uni=new Contract(UNI_QUOTER,UNI_ABI,provider);
- slip=new Contract(AERO_SLIP_QUOTER,SLIP_ABI,provider);
- return RPCS[activeRpcIndex];
+function makeContext(i){
+ const idx=((i%RPCS.length)+RPCS.length)%RPCS.length;
+ const provider=new JsonRpcProvider(RPCS[idx].url,8453,{staticNetwork:true});
+ return {
+  idx,
+  rpc:RPCS[idx],
+  provider,
+  aero:new Contract(AERO_ROUTER,AERO_ABI,provider),
+  uni:new Contract(UNI_QUOTER,UNI_ABI,provider),
+  slip:new Contract(AERO_SLIP_QUOTER,SLIP_ABI,provider)
+ };
 }
-activateRpc(0);
+let activeRpcIndex=0;
 
 function setText(id,text,type=""){
  const el=document.getElementById(id); el.textContent=text; el.className="value "+type;
@@ -146,16 +152,17 @@ async function updateNetwork(){
  for(let i=0;i<RPCS.length;i++){
   const idx=(activeRpcIndex+i)%RPCS.length;
   try{
-   const rpc=activateRpc(idx);
-   const net=await provider.getNetwork();
+   const ctx=makeContext(idx);
+   const [net,block]=await Promise.all([ctx.provider.getNetwork(),ctx.provider.getBlockNumber()]);
    if(Number(net.chainId)!==8453) throw new Error("Wrong chain");
-   const block=await provider.getBlockNumber();
-   setText("rpcStatus","LIVE ✓ · "+rpc.name,"green");
+   activeRpcIndex=idx;
+   setText("rpcStatus","LIVE ✓ · "+ctx.rpc.name,"green");
    setText("block",block.toLocaleString());
    return;
   }catch(e){}
  }
- setText("rpcStatus","UNAVAILABLE","red"); throw new Error("All Base RPCs unavailable");
+ setText("rpcStatus","UNAVAILABLE","red");
+ throw new Error("All Base RPCs unavailable");
 }
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
@@ -163,77 +170,87 @@ async function withRetry(fn){
  let last;
  for(let attempt=0;attempt<3;attempt++){
   const idx=(activeRpcIndex+attempt)%RPCS.length;
-  activateRpc(idx);
+  const ctx=makeContext(idx);
   try{
-   const result=await fn();
-   return {ok:true,result,rpc:RPCS[idx].name,attempts:attempt+1};
-  }catch(e){last=e; await sleep(500*(attempt+1));}
+   const result=await fn(ctx);
+   return {ok:true,result,rpc:ctx.rpc.name,attempts:attempt+1};
+  }catch(e){
+   last=e;
+   if(attempt<2) await sleep(250*(attempt+1));
+  }
  }
  return {ok:false,error:last};
 }
 
-async function aeroQuote(tokenIn,tokenOut,amountIn){
- let last;
- for(const factory of [ZeroAddress,AERO_FACTORY]){
-  try{
-   const route=[{from:tokenIn,to:tokenOut,stable:false,factory}];
-   const amounts=await aero.getAmountsOut(amountIn,route);
-   const out=amounts[amounts.length-1];
-   if(out<=0n) throw new Error("Zero output");
-   return out;
-  }catch(e){last=e; await sleep(180);}
- }
- throw last||new Error("Aerodrome quote failed");
+async function aeroV2Quote(ctx,tokenIn,tokenOut,amountIn){
+ const attempts=[ZeroAddress,AERO_FACTORY].map(async factory=>{
+  const route=[{from:tokenIn,to:tokenOut,stable:false,factory}];
+  const amounts=await ctx.aero.getAmountsOut(amountIn,route);
+  const out=amounts[amounts.length-1];
+  if(out<=0n) throw new Error("Zero V2 output");
+  return out;
+ });
+ const settled=await Promise.allSettled(attempts);
+ const outs=settled.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ if(!outs.length) throw new Error("No Aerodrome V2 quote");
+ return outs.reduce((a,b)=>a>b?a:b);
 }
 
-async function slipQuote(tokenIn,tokenOut,amountIn){
- let best=null;
- for(const tickSpacing of [1,10,50,100,200]){
-  try{
-   const q=await slip.quoteExactInputSingle.staticCall({tokenIn,tokenOut,amountIn,tickSpacing,sqrtPriceLimitX96:0});
-   const amountOut=q[0];
-   if(amountOut>0n && (!best||amountOut>best.amountOut)) best={amountOut,tickSpacing};
-  }catch(e){}
- }
- if(!best) throw new Error("No Slipstream quote");
- return best;
+async function slipQuote(ctx,tokenIn,tokenOut,amountIn){
+ const settled=await Promise.allSettled([1,10,50,100,200].map(async tickSpacing=>{
+  const q=await ctx.slip.quoteExactInputSingle.staticCall({
+   tokenIn,tokenOut,amountIn,tickSpacing,sqrtPriceLimitX96:0
+  });
+  if(q[0]<=0n) throw new Error("Zero Slipstream output");
+  return {amountOut:q[0],tickSpacing};
+ }));
+ const good=settled.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ if(!good.length) throw new Error("No Slipstream quote");
+ return good.reduce((a,b)=>b.amountOut>a.amountOut?b:a);
 }
 
-async function aeroBestQuote(tokenIn,tokenOut,amountIn){
- let v2=null,cl=null;
- try{v2=await aeroQuote(tokenIn,tokenOut,amountIn);}catch(e){}
- try{cl=await slipQuote(tokenIn,tokenOut,amountIn);}catch(e){}
+async function aeroBestQuote(ctx,tokenIn,tokenOut,amountIn){
+ const [v2s,cls]=await Promise.allSettled([
+  aeroV2Quote(ctx,tokenIn,tokenOut,amountIn),
+  slipQuote(ctx,tokenIn,tokenOut,amountIn)
+ ]);
+ const v2=v2s.status==="fulfilled"?v2s.value:null;
+ const cl=cls.status==="fulfilled"?cls.value:null;
  if(!v2&&!cl) throw new Error("No Aerodrome quote");
  if(cl && (!v2 || cl.amountOut>v2)) return {amountOut:cl.amountOut,venue:"Slipstream"};
  return {amountOut:v2,venue:"V2"};
 }
 
-async function uniQuote(tokenIn,tokenOut,amountIn){
- let best=null;
- for(const fee of [100,500,3000,10000]){
-  try{
-   const q=await uni.quoteExactInputSingle.staticCall({
-    tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
-   });
-   const amountOut=q[0];
-   if(amountOut>0n && (!best||amountOut>best.amountOut)) best={amountOut,fee};
-  }catch(e){}
- }
- if(!best) throw new Error("No Uniswap pool quote");
- return best;
+async function uniQuote(ctx,tokenIn,tokenOut,amountIn){
+ const settled=await Promise.allSettled([100,500,3000,10000].map(async fee=>{
+  const q=await ctx.uni.quoteExactInputSingle.staticCall({
+   tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
+  });
+  if(q[0]<=0n) throw new Error("Zero Uniswap output");
+  return {amountOut:q[0],fee};
+ }));
+ const good=settled.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ if(!good.length) throw new Error("No Uniswap pool quote");
+ return good.reduce((a,b)=>b.amountOut>a.amountOut?b:a);
 }
 function feeText(f){return (f/10000).toFixed(2)+"%";}
 
 async function scanPair(pair,amount){
  const start=parseUnits(amount.toString(),6);
 
- const a1=await withRetry(()=>uniQuote(USDC,pair.address,start));
- let a2={ok:false};
- if(a1.ok) a2=await withRetry(()=>aeroBestQuote(pair.address,USDC,a1.result.amountOut));
+ // First legs of Route A and Route B are independent, so run together.
+ const [a1,b1]=await Promise.all([
+  withRetry(ctx=>uniQuote(ctx,USDC,pair.address,start)),
+  withRetry(ctx=>aeroBestQuote(ctx,USDC,pair.address,start))
+ ]);
 
- const b1=await withRetry(()=>aeroBestQuote(USDC,pair.address,start));
- let b2={ok:false};
- if(b1.ok) b2=await withRetry(()=>uniQuote(pair.address,USDC,b1.result.amountOut));
+ // Second legs depend on first-leg outputs, but A2 and B2 are independent.
+ const [a2,b2]=await Promise.all([
+  a1.ok ? withRetry(ctx=>aeroBestQuote(ctx,pair.address,USDC,a1.result.amountOut))
+        : Promise.resolve({ok:false}),
+  b1.ok ? withRetry(ctx=>uniQuote(ctx,pair.address,USDC,b1.result.amountOut))
+        : Promise.resolve({ok:false})
+ ]);
 
  const routes=[];
  if(a1.ok&&a2.ok){
@@ -268,8 +285,11 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
  }
 }
 
-function renderBest(results,amount,gasReserve,slippagePct,minNet){
+function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
  const valid=results.filter(r=>r.ok);
+ const fresh=durationSec<=30;
+ setText("scanDuration",durationSec.toFixed(2)+" seconds",fresh?"green":"yellow");
+ setText("freshness",fresh?"FRESH ✓":"STALE — SIGNAL BLOCKED",fresh?"green":"yellow");
  if(!valid.length){
   ["bestPair","bestRoute","bestAeroVenue","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
   setText("opportunity","NO COMPLETE ROUTE","yellow");
@@ -290,12 +310,43 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet){
  setText("netPL",(b.net>=0?"+":"")+b.net.toFixed(6)+" USDC",b.net>0?"green":"red");
  const pct=b.net/amount*100;
  setText("netPct",(pct>=0?"+":"")+pct.toFixed(4)+"%",pct>0?"green":"red");
- setText("opportunity",b.net>=minNet?"NET OPPORTUNITY ✓":"NO NET PROFIT",b.net>=minNet?"green":"red");
+ if(!fresh && b.net>=minNet){
+  setText("opportunity","STALE — DO NOT USE","yellow");
+ }else{
+  setText("opportunity",b.net>=minNet?"NET OPPORTUNITY ✓":"NO NET PROFIT",b.net>=minNet?"green":"red");
+ }
  setText("updated",new Date().toLocaleTimeString());
 }
 
 async function scan(){
  const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
+ const amount=Number(document.getElementById("amount").value);
+ const gas=Number(document.getElementById("gasReserve").value);
+ const slip=Number(document.getElementById("slippageBuffer").value);
+ const minNet=Number(document.getElementById("minNetProfit").value);
+ if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){log.textContent="Enter valid scan settings.";return;}
+ btn.disabled=true; btn.textContent="FAST SCANNING 3 PAIRS…";
+ log.textContent="Parallel scan running: WETH, cbBTC and AERO…";
+ const started=performance.now();
+ try{
+  await updateNetwork();
+  const results=await Promise.all(PAIRS.map(p=>scanPair(p,amount)));
+  const durationSec=(performance.now()-started)/1000;
+  renderLeaderboard(results,amount,gas,slip,minNet);
+  renderBest(results,amount,gas,slip,minNet,durationSec);
+  const complete=results.filter(r=>r.ok).length;
+  const fresh=durationSec<=30;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/3 pairs · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+ }catch(e){
+  const durationSec=(performance.now()-started)/1000;
+  setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
+  setText("freshness","SCAN ERROR","red");
+  log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
+ }finally{
+  btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
+ }
+}
+document.getElementById("scanBtn"),log=document.getElementById("log");
  const amount=Number(document.getElementById("amount").value);
  const gas=Number(document.getElementById("gasReserve").value);
  const slip=Number(document.getElementById("slippageBuffer").value);
