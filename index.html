@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.0</title>
+<title>Arbitrage Scanner V3.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.0<br>BASE MULTI-DEX<br>SCANNER</div>
+<div class="badge">V3.1<br>8-PAIR MULTI-DEX<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.0 compares Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3 across every two-venue round trip. It keeps the fast parallel engine, multi-RPC failover, 30s freshness guard and route-quality filter. The three persistently poor-liquidity pairs from V2.9.1 are removed from the active scan. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.1 keeps the proven 3-DEX engine and restores 8-pair coverage with three new candidates: USDS, WELL and VIRTUAL. Every pair is tested across Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3, with the 2% route-quality filter protecting the ranking. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -49,7 +49,7 @@ small{color:#71829d}
 <h2>💰 Scan Settings</h2>
 <label class="label">Starting Capital per Pair (USDC)</label>
 <input id="amount" type="number" value="100" min="1" step="1">
-<div class="row"><span class="label">Pairs</span><span class="value">5</span></div>
+<div class="row"><span class="label">Pairs</span><span class="value">8</span></div>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -81,7 +81,7 @@ small{color:#71829d}
 <div class="card">
 <h2>🏆 Best Complete Result</h2>
 <div class="row"><span class="label">Pair</span><span id="bestPair" class="value">—</span></div>
-<div class="row"><span class="label">Better Route</span><span id="bestRoute" class="value">—</span></div>
+<div class="row"><span class="label">Best DEX Route</span><span id="bestRoute" class="value">—</span></div>
 <div class="row"><span class="label">Aerodrome Venue</span><span id="bestAeroVenue" class="value">—</span></div>
 <div class="row"><span class="label">Best Final USDC</span><span id="bestFinal" class="value">—</span></div>
 <div class="row"><span class="label">Gross P/L</span><span id="bestGross" class="value">—</span></div>
@@ -107,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.0 • Base Multi-DEX • Uniswap V3 + Aerodrome + PancakeSwap V3 • 5 Active Pairs • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.1 • 8-Pair Base Multi-DEX • Uniswap V3 + Aerodrome + PancakeSwap V3 • Quality Filter • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -140,8 +140,10 @@ const PAIRS=[
  {symbol:"cbBTC",address:CBBTC,decimals:8},
  {symbol:"AERO",address:AERO,decimals:18},
  {symbol:"EURC",address:EURC,decimals:6},
- {symbol:"USDbC",address:USDBC,decimals:6}
-];
+ {symbol:"USDbC",address:USDBC,decimals:6},
+ {symbol:"USDS",address:"0x820C137fa70C8691f0e44Dc420a5e53c168921Dc",decimals:18},
+ {symbol:"WELL",address:"0xA88594D404727625A9437C3f886C7643872296AE",decimals:18},
+ {symbol:"VIRTUAL",address:"0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",decimals:18},];
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
 const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
@@ -395,7 +397,7 @@ async function scan(){
  if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent="FAST SCANNING 5 PAIRS × 3 DEX…";
+ btn.disabled=true; btn.textContent="FAST SCANNING 8 PAIRS × 3 DEX…";
  log.textContent="Parallel scan running: WETH, cbBTC, AERO, cbETH, wstETH, EURC, DAI and USDbC…";
  const started=performance.now();
  try{
@@ -407,7 +409,7 @@ async function scan(){
   const complete=results.filter(r=>r.ok).length;
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/5 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/8 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
