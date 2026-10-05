@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.9.1</title>
+<title>Arbitrage Scanner V3.0</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.9.1<br>ROUTE QUALITY<br>FILTER</div>
+<div class="badge">V3.0<br>BASE MULTI-DEX<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-🛡️ Live read-only Base scanner with route-quality protection. V2.9.1 keeps the proven V2.8 8-pair fast engine, but rejects abnormal round trips before ranking them. Complete routes that lose more than the Maximum Gross Loss threshold are marked POOR LIQUIDITY instead of being treated as normal opportunities. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.0 compares Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3 across every two-venue round trip. It keeps the fast parallel engine, multi-RPC failover, 30s freshness guard and route-quality filter. The three persistently poor-liquidity pairs from V2.9.1 are removed from the active scan. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -49,7 +49,7 @@ small{color:#71829d}
 <h2>💰 Scan Settings</h2>
 <label class="label">Starting Capital per Pair (USDC)</label>
 <input id="amount" type="number" value="100" min="1" step="1">
-<div class="row"><span class="label">Pairs</span><span class="value">8</span></div>
+<div class="row"><span class="label">Pairs</span><span class="value">5</span></div>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -107,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.9.1 • Route Quality Filter • Scan Fix • 8-Pair Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.0 • Base Multi-DEX • Uniswap V3 + Aerodrome + PancakeSwap V3 • 5 Active Pairs • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -133,20 +133,19 @@ const AERO_ROUTER="0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43";
 const AERO_FACTORY="0x420DD381b31aEf6683db6B902084cB0FFECe40Da";
 const AERO_SLIP_QUOTER="0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0";
 const UNI_QUOTER="0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
+const PANCAKE_QUOTER="0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997";
 
 const PAIRS=[
  {symbol:"WETH",address:WETH,decimals:18},
  {symbol:"cbBTC",address:CBBTC,decimals:8},
  {symbol:"AERO",address:AERO,decimals:18},
- {symbol:"cbETH",address:CBETH,decimals:18},
- {symbol:"wstETH",address:WSTETH,decimals:18},
  {symbol:"EURC",address:EURC,decimals:6},
- {symbol:"DAI",address:DAI,decimals:18},
  {symbol:"USDbC",address:USDBC,decimals:6}
 ];
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
 const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
+const PANCAKE_ABI=UNI_ABI;
 const SLIP_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,int24 tickSpacing,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 
 function makeContext(i){
@@ -158,6 +157,7 @@ function makeContext(i){
   provider,
   aero:new Contract(AERO_ROUTER,AERO_ABI,provider),
   uni:new Contract(UNI_QUOTER,UNI_ABI,provider),
+  pancake:new Contract(PANCAKE_QUOTER,PANCAKE_ABI,provider),
   slip:new Contract(AERO_SLIP_QUOTER,SLIP_ABI,provider)
  };
 }
@@ -251,37 +251,70 @@ async function uniQuote(ctx,tokenIn,tokenOut,amountIn){
  if(!good.length) throw new Error("No Uniswap pool quote");
  return good.reduce((a,b)=>b.amountOut>a.amountOut?b:a);
 }
+
+async function pancakeQuote(ctx,tokenIn,tokenOut,amountIn){
+ const settled=await Promise.allSettled([100,500,2500,10000].map(async fee=>{
+  const q=await ctx.pancake.quoteExactInputSingle.staticCall({
+   tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
+  });
+  if(q[0]<=0n) throw new Error("Zero PancakeSwap output");
+  return {amountOut:q[0],fee};
+ }));
+ const good=settled.filter(x=>x.status==="fulfilled").map(x=>x.value);
+ if(!good.length) throw new Error("No PancakeSwap V3 pool quote");
+ return good.reduce((a,b)=>b.amountOut>a.amountOut?b:a);
+}
+
+async function venueQuote(ctx,venue,tokenIn,tokenOut,amountIn){
+ if(venue==="Uniswap V3"){
+  const q=await uniQuote(ctx,tokenIn,tokenOut,amountIn);
+  return {amountOut:q.amountOut,detail:feeText(q.fee)};
+ }
+ if(venue==="PancakeSwap V3"){
+  const q=await pancakeQuote(ctx,tokenIn,tokenOut,amountIn);
+  return {amountOut:q.amountOut,detail:feeText(q.fee)};
+ }
+ const q=await aeroBestQuote(ctx,tokenIn,tokenOut,amountIn);
+ return {amountOut:q.amountOut,detail:q.venue};
+}
+const VENUES=["Uniswap V3","Aerodrome","PancakeSwap V3"];
+
 function feeText(f){return (f/10000).toFixed(2)+"%";}
+
 
 async function scanPair(pair,amount,maxGrossLossPct){
  const start=parseUnits(amount.toString(),6);
 
- const [a1,b1]=await Promise.all([
-  withRetry(ctx=>uniQuote(ctx,USDC,pair.address,start)),
-  withRetry(ctx=>aeroBestQuote(ctx,USDC,pair.address,start))
- ]);
+ // First leg: quote USDC -> token independently on all three DEX families.
+ const firstResults=await Promise.all(VENUES.map(async venue=>{
+  const q=await withRetry(ctx=>venueQuote(ctx,venue,USDC,pair.address,start));
+  return {venue,...q};
+ }));
 
- const [a2,b2]=await Promise.all([
-  a1.ok ? withRetry(ctx=>aeroBestQuote(ctx,pair.address,USDC,a1.result.amountOut))
-        : Promise.resolve({ok:false}),
-  b1.ok ? withRetry(ctx=>uniQuote(ctx,pair.address,USDC,b1.result.amountOut))
-        : Promise.resolve({ok:false})
- ]);
-
- const routes=[];
- if(a1.ok&&a2.ok){
-  const final=Number(formatUnits(a2.result.amountOut,6));
-  const gross=final-amount, grossPct=gross/amount*100;
-  routes.push({route:"A",final,gross,grossPct,fee:feeText(a1.result.fee),aeroVenue:a2.result.venue,
-               quality:grossPct>=-maxGrossLossPct});
+ // Build every ordered two-venue round trip (3 x 2 = 6 routes).
+ const jobs=[];
+ for(const first of firstResults){
+  if(!first.ok) continue;
+  for(const exitVenue of VENUES){
+   if(exitVenue===first.venue) continue;
+   jobs.push((async()=>{
+    const second=await withRetry(ctx=>venueQuote(ctx,exitVenue,pair.address,USDC,first.result.amountOut));
+    if(!second.ok) return null;
+    const final=Number(formatUnits(second.result.amountOut,6));
+    const gross=final-amount, grossPct=gross/amount*100;
+    return {
+     route:first.venue+" → "+exitVenue,
+     buyVenue:first.venue,
+     sellVenue:exitVenue,
+     buyDetail:first.result.detail,
+     sellDetail:second.result.detail,
+     final,gross,grossPct,
+     quality:grossPct>=-maxGrossLossPct
+    };
+   })());
+  }
  }
- if(b1.ok&&b2.ok){
-  const final=Number(formatUnits(b2.result.amountOut,6));
-  const gross=final-amount, grossPct=gross/amount*100;
-  routes.push({route:"B",final,gross,grossPct,fee:feeText(b2.result.fee),aeroVenue:b1.result.venue,
-               quality:grossPct>=-maxGrossLossPct});
- }
-
+ const routes=(await Promise.all(jobs)).filter(Boolean);
  if(!routes.length) return {pair:pair.symbol,ok:false,status:"UNAVAILABLE",completeRoutes:0,validRoutes:0};
 
  const qualityRoutes=routes.filter(r=>r.quality).sort((x,y)=>y.final-x.final);
@@ -305,14 +338,14 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
   if(!r.ok && r.status==="POOR LIQUIDITY"){
    const x=r.rejectedBest;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">POOR LIQUIDITY</span></div>
-   <div class="pairMeta">Completed ${r.completeRoutes}/2 routes, but all failed the quality guard. Best rejected Route ${x.route} · Aerodrome ${x.aeroVenue} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
+   <div class="pairMeta">Completed ${r.completeRoutes}/2 routes, but all failed the quality guard. Best rejected ${x.route} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
   }else if(!r.ok){
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">UNAVAILABLE</span></div><div class="pairMeta">No complete two-venue round trip this scan.</div>`;
   }else{
    const net=r.gross-gasReserve-buffer;
    const good=net>=minNet;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
-   <div class="pairMeta">VALID · Best Route ${r.route} · Aerodrome ${r.aeroVenue} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.validRoutes}/${r.completeRoutes} routes passed quality</div>`;
+   <div class="pairMeta">VALID · Best ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.validRoutes}/${r.completeRoutes} routes passed quality</div>`;
    r.net=net;
   }
   board.appendChild(div);
@@ -362,7 +395,7 @@ async function scan(){
  if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent="FAST SCANNING 8 PAIRS…";
+ btn.disabled=true; btn.textContent="FAST SCANNING 5 PAIRS × 3 DEX…";
  log.textContent="Parallel scan running: WETH, cbBTC, AERO, cbETH, wstETH, EURC, DAI and USDbC…";
  const started=performance.now();
  try{
@@ -374,7 +407,7 @@ async function scan(){
   const complete=results.filter(r=>r.ok).length;
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/8 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/5 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
