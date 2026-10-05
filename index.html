@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.7</title>
+<title>Arbitrage Scanner V2.7.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.7<br>FAST PARALLEL<br>SCANNER</div>
+<div class="badge">V2.7.1<br>FAST PARALLEL<br>SCANNER</div>
 </div>
 
 <div class="card notice">
-⚡ Live read-only fast parallel scanner on Base. V2.7 keeps the V2.6 venues and safety filters, but scans independent pairs, routes, Uniswap fee tiers and Aerodrome quote paths concurrently. Multi-RPC retry remains available after failures. Scan duration and a 30-second freshness guard are shown. No wallet, approval or transaction is used.
+⚡ Live read-only fast parallel scanner on Base. V2.7.1 keeps the V2.6 venues and safety filters, but scans independent pairs, routes, Uniswap fee tiers and Aerodrome quote paths concurrently. Multi-RPC retry remains available after failures. Scan duration and a 30-second freshness guard are shown. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -99,7 +99,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.7 • Fast Parallel Scanner • 30s Freshness Guard • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.7.1 • Fast Parallel Scanner • RPC Init Fix • 30s Freshness Guard • No Real Trading</small></p>
 </div>
 
 <script type="module">
@@ -319,60 +319,7 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
 }
 
 async function scan(){
- const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
- const amount=Number(document.getElementById("amount").value);
- const gas=Number(document.getElementById("gasReserve").value);
- const slip=Number(document.getElementById("slippageBuffer").value);
- const minNet=Number(document.getElementById("minNetProfit").value);
- if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){log.textContent="Enter valid scan settings.";return;}
- btn.disabled=true; btn.textContent="FAST SCANNING 3 PAIRS…";
- log.textContent="Parallel scan running: WETH, cbBTC and AERO…";
- const started=performance.now();
- try{
-  await updateNetwork();
-  const results=await Promise.all(PAIRS.map(p=>scanPair(p,amount)));
-  const durationSec=(performance.now()-started)/1000;
-  renderLeaderboard(results,amount,gas,slip,minNet);
-  renderBest(results,amount,gas,slip,minNet,durationSec);
-  const complete=results.filter(r=>r.ok).length;
-  const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/3 pairs · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
- }catch(e){
-  const durationSec=(performance.now()-started)/1000;
-  setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
-  setText("freshness","SCAN ERROR","red");
-  log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
- }finally{
-  btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
- }
-}
-document.getElementById("scanBtn"),log=document.getElementById("log");
- const amount=Number(document.getElementById("amount").value);
- const gas=Number(document.getElementById("gasReserve").value);
- const slip=Number(document.getElementById("slippageBuffer").value);
- const minNet=Number(document.getElementById("minNetProfit").value);
- if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){log.textContent="Enter valid scan settings.";return;}
- btn.disabled=true; btn.textContent="SCANNING 3 PAIRS…";
- log.textContent="Hunting WETH, cbBTC and AERO opportunities across Aerodrome V2 + Slipstream…";
- try{
-  await updateNetwork();
-  const results=[];
-  for(const p of PAIRS){
-   log.textContent=`Scanning ${p.symbol}/USDC… (${results.length+1}/3)`;
-   results.push(await scanPair(p,amount));
-   await sleep(250);
-  }
-  renderLeaderboard(results,amount,gas,slip,minNet);
-  renderBest(results,amount,gas,slip,minNet);
-  const complete=results.filter(r=>r.ok).length;
-  log.textContent=`HUNT COMPLETE: ${complete}/3 pairs produced at least one complete round trip. No transaction was executed.`;
- }catch(e){
-  log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
- }finally{
-  btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
- }
-}
-document.getElementById("scanBtn").addEventListener("click",scan);
+ const btn=document.getElementById("scanBtn").addEventListener("click",scan);
 updateNetwork().catch(()=>{});
 </script>
 </body>
