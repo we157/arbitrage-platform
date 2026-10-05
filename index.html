@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V2.8</title>
+<title>Arbitrage Scanner V2.9</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V2.8<br>8-PAIR<br>OPPORTUNITY HUNTER</div>
+<div class="badge">V2.9<br>ROUTE QUALITY<br>FILTER</div>
 </div>
 
 <div class="card notice">
-🎯 Live read-only opportunity hunter on Base. V2.8 keeps the proven V2.7.2 fast parallel, multi-RPC and retry engine, but expands coverage from 3 to 8 pairs. It compares Uniswap V3 against Aerodrome V2 and Slipstream in both round-trip directions, ranks only complete routes by estimated net P/L, and blocks stale signals after 30 seconds. No wallet, approval or transaction is used.
+🛡️ Live read-only Base scanner with route-quality protection. V2.9 keeps the proven V2.8 8-pair fast engine, but rejects abnormal round trips before ranking them. Complete routes that lose more than the Maximum Gross Loss threshold are marked POOR LIQUIDITY instead of being treated as normal opportunities. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -104,7 +104,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V2.8 • 8-Pair Opportunity Hunter • V2.7.2 Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
+<p style="text-align:center;margin:35px 0"><small>V2.9 • Route Quality Filter • 8-Pair Fast Engine • 30s Freshness Guard • No Real Trading</small></p>
 </div>
 
 <script type="module">
@@ -250,16 +250,14 @@ async function uniQuote(ctx,tokenIn,tokenOut,amountIn){
 }
 function feeText(f){return (f/10000).toFixed(2)+"%";}
 
-async function scanPair(pair,amount){
+async function scanPair(pair,amount,maxGrossLossPct){
  const start=parseUnits(amount.toString(),6);
 
- // First legs of Route A and Route B are independent, so run together.
  const [a1,b1]=await Promise.all([
   withRetry(ctx=>uniQuote(ctx,USDC,pair.address,start)),
   withRetry(ctx=>aeroBestQuote(ctx,USDC,pair.address,start))
  ]);
 
- // Second legs depend on first-leg outputs, but A2 and B2 are independent.
  const [a2,b2]=await Promise.all([
   a1.ok ? withRetry(ctx=>aeroBestQuote(ctx,pair.address,USDC,a1.result.amountOut))
         : Promise.resolve({ok:false}),
@@ -270,15 +268,29 @@ async function scanPair(pair,amount){
  const routes=[];
  if(a1.ok&&a2.ok){
   const final=Number(formatUnits(a2.result.amountOut,6));
-  routes.push({route:"A",final,gross:final-amount,fee:feeText(a1.result.fee),aeroVenue:a2.result.venue});
+  const gross=final-amount, grossPct=gross/amount*100;
+  routes.push({route:"A",final,gross,grossPct,fee:feeText(a1.result.fee),aeroVenue:a2.result.venue,
+               quality:grossPct>=-maxGrossLossPct});
  }
  if(b1.ok&&b2.ok){
   const final=Number(formatUnits(b2.result.amountOut,6));
-  routes.push({route:"B",final,gross:final-amount,fee:feeText(b2.result.fee),aeroVenue:b1.result.venue});
+  const gross=final-amount, grossPct=gross/amount*100;
+  routes.push({route:"B",final,gross,grossPct,fee:feeText(b2.result.fee),aeroVenue:b1.result.venue,
+               quality:grossPct>=-maxGrossLossPct});
  }
- if(!routes.length) return {pair:pair.symbol,ok:false};
- routes.sort((x,y)=>y.final-x.final);
- return {pair:pair.symbol,ok:true,...routes[0],completeRoutes:routes.length};
+
+ if(!routes.length) return {pair:pair.symbol,ok:false,status:"UNAVAILABLE",completeRoutes:0,validRoutes:0};
+
+ const qualityRoutes=routes.filter(r=>r.quality).sort((x,y)=>y.final-x.final);
+ const allSorted=[...routes].sort((x,y)=>y.final-x.final);
+
+ if(!qualityRoutes.length){
+  return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",completeRoutes:routes.length,validRoutes:0,
+          rejectedBest:allSorted[0]};
+ }
+
+ return {pair:pair.symbol,ok:true,status:"VALID",...qualityRoutes[0],
+         completeRoutes:routes.length,validRoutes:qualityRoutes.length};
 }
 
 function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
@@ -287,13 +299,17 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
  board.innerHTML="";
  for(const r of results){
   const div=document.createElement("div"); div.className="pair";
-  if(!r.ok){
+  if(!r.ok && r.status==="POOR LIQUIDITY"){
+   const x=r.rejectedBest;
+   div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">POOR LIQUIDITY</span></div>
+   <div class="pairMeta">Completed ${r.completeRoutes}/2 routes, but all failed the quality guard. Best rejected Route ${x.route} · Aerodrome ${x.aeroVenue} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
+  }else if(!r.ok){
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">UNAVAILABLE</span></div><div class="pairMeta">No complete two-venue round trip this scan.</div>`;
   }else{
    const net=r.gross-gasReserve-buffer;
    const good=net>=minNet;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
-   <div class="pairMeta">Best Route ${r.route} · Aerodrome ${r.aeroVenue} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.completeRoutes}/2 routes complete</div>`;
+   <div class="pairMeta">VALID · Best Route ${r.route} · Aerodrome ${r.aeroVenue} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.validRoutes}/${r.completeRoutes} routes passed quality</div>`;
    r.net=net;
   }
   board.appendChild(div);
@@ -339,7 +355,8 @@ async function scan(){
  const gas=Number(document.getElementById("gasReserve").value);
  const slip=Number(document.getElementById("slippageBuffer").value);
  const minNet=Number(document.getElementById("minNetProfit").value);
- if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0){
+ const maxGrossLossPct=Number(document.getElementById("maxGrossLossPct").value);
+ if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent="FAST SCANNING 8 PAIRS…";
@@ -347,13 +364,14 @@ async function scan(){
  const started=performance.now();
  try{
   await updateNetwork();
-  const results=await Promise.all(PAIRS.map(p=>scanPair(p,amount)));
+  const results=await Promise.all(PAIRS.map(p=>scanPair(p,amount,maxGrossLossPct)));
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
   const complete=results.filter(r=>r.ok).length;
+  const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/8 pairs · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/8 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
