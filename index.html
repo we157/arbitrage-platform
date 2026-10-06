@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.3.2</title>
+<title>Arbitrage Scanner V3.3.3</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.3.2<br>9-PAIR 4-DEX<br>QUOTE FIX</div>
+<div class="badge">V3.3.3<br>7-PAIR 4-DEX<br>RELIABILITY FIX</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.3.2 keeps 4 DEX families and 9 pairs, with corrected per-attempt quote timeouts so an unresponsive venue cannot block every pair. DEGEN is removed after repeated poor-liquidity tests. Alien Base V2 is added beside Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3. MORPHO and ALB are added for wider Base coverage. The 2% route-quality filter remains active. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.3.3 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -49,7 +49,7 @@ small{color:#71829d}
 <h2>💰 Scan Settings</h2>
 <label class="label">Starting Capital per Pair (USDC)</label>
 <input id="amount" type="number" value="100" min="1" step="1">
-<div class="row"><span class="label">Pairs</span><span class="value">9</span></div>
+<div class="row"><span class="label">Pairs</span><span class="value">7</span></div>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -70,10 +70,7 @@ small{color:#71829d}
 <div class="pair"><div class="pairTop"><span class="pairName">WETH / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">cbBTC / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">AERO / USDC</span><span class="value yellow">WAITING</span></div></div>
-<div class="pair"><div class="pairTop"><span class="pairName">cbETH / USDC</span><span class="value yellow">WAITING</span></div></div>
-<div class="pair"><div class="pairTop"><span class="pairName">wstETH / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">EURC / USDC</span><span class="value yellow">WAITING</span></div></div>
-<div class="pair"><div class="pairTop"><span class="pairName">DAI / USDC</span><span class="value yellow">WAITING</span></div></div>
 <div class="pair"><div class="pairTop"><span class="pairName">USDbC / USDC</span><span class="value yellow">WAITING</span></div></div>
 </div>
 </div>
@@ -107,7 +104,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.3.2 • 9-Pair Base Multi-DEX • Quote Timeout Fix • Uniswap V3 + Aerodrome + PancakeSwap V3 + Alien Base V2 • DEGEN Removed • Quality Filter • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.3.3 • 7-Pair Base Multi-DEX • Reliability Fix • Core 3-DEX Protected • Alien Base Isolated • Quote Failure Diagnostics • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -135,8 +132,6 @@ const AERO_SLIP_QUOTER="0x254cF9E1E6e233aa1AC962CB9B05b2cfeAaE15b0";
 const UNI_QUOTER="0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a";
 const PANCAKE_QUOTER="0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997";
 const ALIEN_V2_ROUTER="0x8c1A3cF8f83074169FE5D7aD50B978e1cD6b37c7";
-const MORPHO="0xBAa5CC21fd487B8Fcc2F632f3F4E8D37262a0842";
-const ALB="0x1dd2d631c92b1aCdFCDd51A0F7145A50130050C4";
 
 const PAIRS=[
  {symbol:"WETH",address:WETH,decimals:18},
@@ -146,8 +141,6 @@ const PAIRS=[
  {symbol:"USDbC",address:USDBC,decimals:6},
  {symbol:"USDS",address:"0x820C137fa70C8691f0e44Dc420a5e53c168921Dc",decimals:18},
  {symbol:"VIRTUAL",address:"0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",decimals:18},
- {symbol:"MORPHO",address:MORPHO,decimals:18},
- {symbol:"ALB",address:ALB,decimals:18}
 ];
 
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
@@ -310,68 +303,69 @@ function feeText(f){return (f/10000).toFixed(2)+"%";}
 
 async function scanPair(pair,amount,maxGrossLossPct){
  const start=parseUnits(amount.toString(),6);
+ const CORE=["Uniswap V3","Aerodrome","PancakeSwap V3"];
 
- // First leg: quote USDC -> token independently on all four DEX families.
- const firstResults=await Promise.all(VENUES.map(async venue=>{
+ const first=await Promise.all(VENUES.map(async venue=>{
   const q=await withRetry(ctx=>venueQuote(ctx,venue,USDC,pair.address,start));
   return {venue,...q};
  }));
+ const firstFailures=first.filter(x=>!x.ok).length;
 
- // Build every ordered two-venue round trip (4 x 3 = 12 routes).
  const jobs=[];
- for(const first of firstResults){
-  if(!first.ok) continue;
-  for(const exitVenue of VENUES){
-   if(exitVenue===first.venue) continue;
+ for(const a of first){
+  if(!a.ok) continue;
+  for(const exit of VENUES){
+   if(exit===a.venue) continue;
    jobs.push((async()=>{
-    const second=await withRetry(ctx=>venueQuote(ctx,exitVenue,pair.address,USDC,first.result.amountOut));
-    if(!second.ok) return null;
-    const final=Number(formatUnits(second.result.amountOut,6));
+    const b=await withRetry(ctx=>venueQuote(ctx,exit,pair.address,USDC,a.result.amountOut));
+    if(!b.ok) return {ok:false};
+    const final=Number(formatUnits(b.result.amountOut,6));
     const gross=final-amount, grossPct=gross/amount*100;
-    return {
-     route:first.venue+" → "+exitVenue,
-     buyVenue:first.venue,
-     sellVenue:exitVenue,
-     buyDetail:first.result.detail,
-     sellDetail:second.result.detail,
-     final,gross,grossPct,
-     quality:grossPct>=-maxGrossLossPct
-    };
+    return {ok:true,route:a.venue+" → "+exit,final,gross,grossPct,
+      quality:grossPct>=-maxGrossLossPct,
+      core:CORE.includes(a.venue)&&CORE.includes(exit)};
    })());
   }
  }
- const routes=(await Promise.all(jobs)).filter(Boolean);
- if(!routes.length) return {pair:pair.symbol,ok:false,status:"UNAVAILABLE",completeRoutes:0,validRoutes:0};
+ const done=await Promise.all(jobs);
+ const routes=done.filter(x=>x.ok);
+ const failures=firstFailures+done.filter(x=>!x.ok).length;
+ const coreRoutes=routes.filter(x=>x.core);
+ const quality=routes.filter(x=>x.quality).sort((a,b)=>b.final-a.final);
+ const coreQuality=coreRoutes.filter(x=>x.quality).sort((a,b)=>b.final-a.final);
+ const ranked=coreQuality.length?coreQuality:quality;
 
- const qualityRoutes=routes.filter(r=>r.quality).sort((x,y)=>y.final-x.final);
- const allSorted=[...routes].sort((x,y)=>y.final-x.final);
+ if(ranked.length) return {pair:pair.symbol,ok:true,status:"VALID",...ranked[0],
+   completeRoutes:routes.length,validRoutes:quality.length,
+   coreComplete:coreRoutes.length,coreValid:coreQuality.length,quoteFailures:failures};
 
- if(!qualityRoutes.length){
-  return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",completeRoutes:routes.length,validRoutes:0,
-          rejectedBest:allSorted[0]};
- }
+ const sorted=[...routes].sort((a,b)=>b.final-a.final);
+ if(routes.length>=3) return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",
+   completeRoutes:routes.length,validRoutes:0,coreComplete:coreRoutes.length,coreValid:0,
+   quoteFailures:failures,rejectedBest:sorted[0]};
 
- return {pair:pair.symbol,ok:true,status:"VALID",...qualityRoutes[0],
-         completeRoutes:routes.length,validRoutes:qualityRoutes.length};
+ return {pair:pair.symbol,ok:false,status:"QUOTE FAILURE",
+   completeRoutes:routes.length,validRoutes:0,coreComplete:coreRoutes.length,coreValid:0,
+   quoteFailures:failures,rejectedBest:sorted[0]||null};
 }
 
 function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
- const buffer=amount*(slippagePct/100);
- const board=document.getElementById("leaderboard");
+ const buffer=amount*(slippagePct/100), board=document.getElementById("leaderboard");
  board.innerHTML="";
  for(const r of results){
   const div=document.createElement("div"); div.className="pair";
+  const diag=`Core ${r.coreValid||0}/${r.coreComplete||0} quality · Total ${r.validRoutes||0}/${r.completeRoutes||0} quality · ${r.quoteFailures||0} quote failures`;
   if(!r.ok && r.status==="POOR LIQUIDITY"){
    const x=r.rejectedBest;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">POOR LIQUIDITY</span></div>
-   <div class="pairMeta">Completed ${r.completeRoutes}/12 routes, but all failed the quality guard. Best rejected ${x.route} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
+   <div class="pairMeta">${diag}. Enough routes completed to classify liquidity. Best rejected ${x.route} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%).</div>`;
   }else if(!r.ok){
-   div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">UNAVAILABLE</span></div><div class="pairMeta">No complete two-venue round trip this scan.</div>`;
+   div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">QUOTE FAILURE</span></div>
+   <div class="pairMeta">${diag}. Too few completed routes to judge liquidity; successful quotes were preserved.</div>`;
   }else{
-   const net=r.gross-gasReserve-buffer;
-   const good=net>=minNet;
+   const net=r.gross-gasReserve-buffer, good=net>=minNet;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
-   <div class="pairMeta">VALID · Best ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${r.validRoutes}/${r.completeRoutes} routes passed quality</div>`;
+   <div class="pairMeta">VALID · Best ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${diag}</div>`;
    r.net=net;
   }
   board.appendChild(div);
@@ -420,8 +414,8 @@ async function scan(){
  if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent="FAST SCANNING 9 PAIRS × 4 DEX…";
- log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS, VIRTUAL, MORPHO and ALB across 4 DEX families…";
+ btn.disabled=true; btn.textContent="FAST SCANNING 7 PAIRS × 4 DEX…";
+ log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. Core 3-DEX routes protected; Alien Base isolated…";
  const started=performance.now();
  try{
   await updateNetwork();
@@ -435,8 +429,9 @@ async function scan(){
   renderBest(results,amount,gas,slip,minNet,durationSec);
   const complete=results.filter(r=>r.ok).length;
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
+  const quoteFail=results.filter(r=>r.status==="QUOTE FAILURE").length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/9 VALID · ${poor} POOR LIQUIDITY · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`FAST SCAN COMPLETE: ${complete}/7 VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
