@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.3</title>
+<title>Arbitrage Scanner V3.3.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,7 +30,7 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.3<br>9-PAIR 4-DEX<br>SCANNER</div>
+<div class="badge">V3.3.1<br>9-PAIR 4-DEX<br>TIMEOUT FIX</div>
 </div>
 
 <div class="card notice">
@@ -107,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.3 • 9-Pair Base Multi-DEX • Uniswap V3 + Aerodrome + PancakeSwap V3 + Alien Base V2 • DEGEN Removed • Quality Filter • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.3.1 • 9-Pair Base Multi-DEX • Timeout Fix • Uniswap V3 + Aerodrome + PancakeSwap V3 + Alien Base V2 • DEGEN Removed • Quality Filter • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -207,6 +207,12 @@ async function withRetry(fn){
   }
  }
  return {ok:false,error:last};
+}
+
+
+const QUOTE_TIMEOUT_MS=6500;
+function withTimeout(promise,ms=QUOTE_TIMEOUT_MS){
+ return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error("QUOTE TIMEOUT")),ms))]);
 }
 
 async function aeroV2Quote(ctx,tokenIn,tokenOut,amountIn){
@@ -419,7 +425,11 @@ async function scan(){
  const started=performance.now();
  try{
   await updateNetwork();
-  const results=await Promise.all(PAIRS.map(p=>scanPair(p,amount,maxGrossLossPct)));
+  const results=await Promise.all(PAIRS.map(p=>
+   withTimeout(scanPair(p,amount,maxGrossLossPct),22000).catch(e=>({
+    pair:p,ok:false,status:"UNAVAILABLE",routes:[],completeRoutes:0,qualityRoutes:0,error:e?.message||"PAIR TIMEOUT"
+   }))
+  ));
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
