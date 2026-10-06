@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.3.3</title>
+<title>Arbitrage Scanner V3.3.4</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.3.3<br>7-PAIR 4-DEX<br>RELIABILITY FIX</div>
+<div class="badge">V3.3.4<br>7-PAIR 4-DEX<br>RPC STABILITY</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.3.3 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.3.4 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -104,7 +104,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.3.3 • 7-Pair Base Multi-DEX • Reliability Fix • Core 3-DEX Protected • Alien Base Isolated • Quote Failure Diagnostics • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.3.4 • 7-Pair Base Multi-DEX • RPC Stability Fix • RPC Concurrency Guard • Core 3-DEX Protected • Alien Base Isolated • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -173,7 +173,7 @@ async function updateNetwork(){
   const idx=(activeRpcIndex+i)%RPCS.length;
   try{
    const ctx=makeContext(idx);
-   const [net,block]=await Promise.all([ctx.provider.getNetwork(),ctx.provider.getBlockNumber()]);
+   const [net,block]=await Promise.all([rpcCall(()=>ctx.provider.getNetwork()),rpcCall(()=>ctx.provider.getBlockNumber())]);
    if(Number(net.chainId)!==8453) throw new Error("Wrong chain");
    activeRpcIndex=idx;
    setText("rpcStatus","LIVE ✓ · "+ctx.rpc.name,"green");
@@ -203,7 +203,23 @@ async function withRetry(fn){
 }
 
 
-const QUOTE_TIMEOUT_MS=2000;
+const QUOTE_TIMEOUT_MS=3500;
+const MAX_RPC_IN_FLIGHT=6;
+let rpcInFlight=0;
+const rpcWaiters=[];
+async function acquireRpcSlot(){
+ if(rpcInFlight<MAX_RPC_IN_FLIGHT){rpcInFlight++;return;}
+ await new Promise(resolve=>rpcWaiters.push(resolve));
+ rpcInFlight++;
+}
+function releaseRpcSlot(){
+ rpcInFlight=Math.max(0,rpcInFlight-1);
+ const next=rpcWaiters.shift(); if(next) next();
+}
+async function rpcCall(fn){
+ await acquireRpcSlot();
+ try{return await fn();}finally{releaseRpcSlot();}
+}
 function withTimeout(promise,ms=QUOTE_TIMEOUT_MS){
  return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error("QUOTE TIMEOUT")),ms))]);
 }
@@ -211,7 +227,7 @@ function withTimeout(promise,ms=QUOTE_TIMEOUT_MS){
 async function aeroV2Quote(ctx,tokenIn,tokenOut,amountIn){
  const attempts=[ZeroAddress,AERO_FACTORY].map(async factory=>{
   const route=[{from:tokenIn,to:tokenOut,stable:false,factory}];
-  const amounts=await ctx.aero.getAmountsOut(amountIn,route);
+  const amounts=await rpcCall(()=>ctx.aero.getAmountsOut(amountIn,route));
   const out=amounts[amounts.length-1];
   if(out<=0n) throw new Error("Zero V2 output");
   return out;
@@ -224,9 +240,9 @@ async function aeroV2Quote(ctx,tokenIn,tokenOut,amountIn){
 
 async function slipQuote(ctx,tokenIn,tokenOut,amountIn){
  const settled=await Promise.allSettled([1,10,50,100,200].map(async tickSpacing=>{
-  const q=await ctx.slip.quoteExactInputSingle.staticCall({
+  const q=await rpcCall(()=>ctx.slip.quoteExactInputSingle.staticCall({
    tokenIn,tokenOut,amountIn,tickSpacing,sqrtPriceLimitX96:0
-  });
+  }));
   if(q[0]<=0n) throw new Error("Zero Slipstream output");
   return {amountOut:q[0],tickSpacing};
  }));
@@ -249,9 +265,9 @@ async function aeroBestQuote(ctx,tokenIn,tokenOut,amountIn){
 
 async function uniQuote(ctx,tokenIn,tokenOut,amountIn){
  const settled=await Promise.allSettled([100,500,3000,10000].map(async fee=>{
-  const q=await ctx.uni.quoteExactInputSingle.staticCall({
+  const q=await rpcCall(()=>ctx.uni.quoteExactInputSingle.staticCall({
    tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
-  });
+  }));
   if(q[0]<=0n) throw new Error("Zero Uniswap output");
   return {amountOut:q[0],fee};
  }));
@@ -262,9 +278,9 @@ async function uniQuote(ctx,tokenIn,tokenOut,amountIn){
 
 async function pancakeQuote(ctx,tokenIn,tokenOut,amountIn){
  const settled=await Promise.allSettled([100,500,2500,10000].map(async fee=>{
-  const q=await ctx.pancake.quoteExactInputSingle.staticCall({
+  const q=await rpcCall(()=>ctx.pancake.quoteExactInputSingle.staticCall({
    tokenIn,tokenOut,amountIn,fee,sqrtPriceLimitX96:0
-  });
+  }));
   if(q[0]<=0n) throw new Error("Zero PancakeSwap output");
   return {amountOut:q[0],fee};
  }));
@@ -274,7 +290,7 @@ async function pancakeQuote(ctx,tokenIn,tokenOut,amountIn){
 }
 
 async function alienV2Quote(ctx,tokenIn,tokenOut,amountIn){
- const amounts=await ctx.alien.getAmountsOut(amountIn,[tokenIn,tokenOut]);
+ const amounts=await rpcCall(()=>ctx.alien.getAmountsOut(amountIn,[tokenIn,tokenOut]));
  const out=amounts[amounts.length-1];
  if(out<=0n) throw new Error("Zero Alien Base V2 output");
  return {amountOut:out};
@@ -340,7 +356,7 @@ async function scanPair(pair,amount,maxGrossLossPct){
    coreComplete:coreRoutes.length,coreValid:coreQuality.length,quoteFailures:failures};
 
  const sorted=[...routes].sort((a,b)=>b.final-a.final);
- if(routes.length>=3) return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",
+ if(coreRoutes.length>=2) return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",
    completeRoutes:routes.length,validRoutes:0,coreComplete:coreRoutes.length,coreValid:0,
    quoteFailures:failures,rejectedBest:sorted[0]};
 
@@ -415,7 +431,7 @@ async function scan(){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent="FAST SCANNING 7 PAIRS × 4 DEX…";
- log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. Core 3-DEX routes protected; Alien Base isolated…";
+ log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. RPC concurrency capped at 6; core 3-DEX routes protected; Alien Base isolated…";
  const started=performance.now();
  try{
   await updateNetwork();
@@ -438,7 +454,7 @@ async function scan(){
   setText("freshness","SCAN ERROR","red");
   log.textContent="SCAN ERROR: "+(e?.shortMessage||e?.message||"Unknown error");
  }finally{
-  btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
+  await sleep(1500); btn.disabled=false; btn.textContent="SCAN ALL PAIRS";
  }
 }
 
