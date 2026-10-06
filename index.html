@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.2</title>
+<title>Arbitrage Scanner V3.2.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.2<br>8-PAIR MULTI-DEX<br>SCANNER</div>
+<div class="badge">V3.2.1<br>8-PAIR MULTI-DEX<br>SCAN FIX</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.2 keeps the proven 3-DEX engine and 8-pair coverage, replacing the repeatedly unavailable WELL pair with DEGEN. Every pair is tested across Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3, with the 2% route-quality filter protecting the ranking. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.2.1 fixes the Best Result rendering error in V3.2 while keeping the same 3-DEX engine and 8-pair coverage with DEGEN. Every pair is tested across Uniswap V3, Aerodrome V2/Slipstream and PancakeSwap V3, with the 2% route-quality filter protecting the ranking. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -107,7 +107,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.2 • 8-Pair Base Multi-DEX • WELL→DEGEN • Uniswap V3 + Aerodrome + PancakeSwap V3 • Quality Filter • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.2.1 • 8-Pair Base Multi-DEX • Scan Fix • Uniswap V3 + Aerodrome + PancakeSwap V3 • Quality Filter • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -340,7 +340,7 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
   if(!r.ok && r.status==="POOR LIQUIDITY"){
    const x=r.rejectedBest;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">POOR LIQUIDITY</span></div>
-   <div class="pairMeta">Completed ${r.completeRoutes}/2 routes, but all failed the quality guard. Best rejected ${x.route} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
+   <div class="pairMeta">Completed ${r.completeRoutes}/6 routes, but all failed the quality guard. Best rejected ${x.route} · Final ${x.final.toFixed(6)} USDC · Gross ${x.gross.toFixed(6)} (${x.grossPct.toFixed(2)}%). Not ranked.</div>`;
   }else if(!r.ok){
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">UNAVAILABLE</span></div><div class="pairMeta">No complete two-venue round trip this scan.</div>`;
   }else{
@@ -360,7 +360,7 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
  setText("scanDuration",durationSec.toFixed(2)+" seconds",fresh?"green":"yellow");
  setText("freshness",fresh?"FRESH ✓":"STALE — SIGNAL BLOCKED",fresh?"green":"yellow");
  if(!valid.length){
-  ["bestPair","bestRoute","bestAeroVenue","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
+  ["bestPair","bestRoute","bestFinal","bestGross","gasCost","bufferCost","netPL","netPct"].forEach(id=>setText(id,"—"));
   setText("opportunity","NO COMPLETE ROUTE","yellow");
   setText("updated",new Date().toLocaleTimeString());
   return;
@@ -371,7 +371,6 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
  const b=valid[0];
  setText("bestPair",b.pair+" / USDC");
  setText("bestRoute","Route "+b.route);
- setText("bestAeroVenue",b.aeroVenue);
  setText("bestFinal",b.final.toFixed(6)+" USDC");
  setText("bestGross",(b.gross>=0?"+":"")+b.gross.toFixed(6)+" USDC",b.gross>0?"green":"red");
  setText("gasCost","-"+gasReserve.toFixed(4)+" USDC");
@@ -398,7 +397,7 @@ async function scan(){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent="FAST SCANNING 8 PAIRS × 3 DEX…";
- log.textContent="Parallel scan running: WETH, cbBTC, AERO, cbETH, wstETH, EURC, DAI and USDbC…";
+ log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS, DEGEN and VIRTUAL…";
  const started=performance.now();
  try{
   await updateNetwork();
