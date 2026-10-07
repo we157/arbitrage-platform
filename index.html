@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.3.5</title>
+<title>Arbitrage Scanner V3.4</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -34,7 +34,7 @@ small{color:#71829d}
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.3.5 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.4 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -47,8 +47,10 @@ small{color:#71829d}
 
 <div class="card">
 <h2>💰 Scan Settings</h2>
-<label class="label">Starting Capital per Pair (USDC)</label>
-<input id="amount" type="number" value="100" min="1" step="1">
+<label class="label">Maximum Trade Size (USDC)</label>
+<input id="amount" type="number" value="100" min="25" max="100" step="25">
+<div class="row"><span class="label">Auto Test Sizes</span><span class="value">$25 / $50 / $75 / $100</span></div>
+<div class="row"><span class="label">This Scan Size</span><span id="testSize" class="value green">$25</span></div>
 <div class="row"><span class="label">Pairs</span><span class="value">7</span></div>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
@@ -91,6 +93,17 @@ small{color:#71829d}
 <div class="row"><span class="label">Quote Freshness</span><span id="freshness" class="value">—</span></div>
 <div class="row"><span class="label">Last Scan</span><span id="updated" class="value">—</span></div>
 <p class="label">Only complete round trips are ranked. A positive signal is suppressed if the full scan takes more than 30 seconds. Estimated net P/L is still a scanner estimate, not guaranteed executable profit.</p>
+</div>
+
+<div class="card">
+<h2>🎯 $100 Profit Hunter</h2>
+<div class="row"><span class="label">24h Qualifying Signals</span><span id="paperSignals" class="value">0</span></div>
+<div class="row"><span class="label">24h Paper Net Total</span><span id="paperNet" class="value">0.0000 USDC</span></div>
+<div class="row"><span class="label">Daily Target</span><span class="value">+0.80 USDC</span></div>
+<div class="row"><span class="label">Target Progress</span><span id="targetProgress" class="value">0.0%</span></div>
+<div class="row"><span class="label">Best Test Size</span><span id="bestSize24h" class="value">—</span></div>
+<p class="label">Paper total counts qualifying scanner signals; it is not realized profit and does not assume the trades were executed.</p>
+<button id="resetPaper" type="button" style="background:#475569">RESET 24H PAPER TRACKER</button>
 </div>
 
 <div class="card">
@@ -375,6 +388,43 @@ async function scanPair(pair,amount,maxGrossLossPct){
    quoteFailures:failures,rejectedBest:sorted[0]||null};
 }
 
+const TEST_SIZES=[25,50,75,100];
+let testSizeIndex=Number(localStorage.getItem("v34TestSizeIndex")||0)%TEST_SIZES.length;
+function getTestSize(maxSize){
+ const allowed=TEST_SIZES.filter(x=>x<=maxSize);
+ if(!allowed.length) return Math.max(1,maxSize);
+ testSizeIndex%=allowed.length;
+ return allowed[testSizeIndex];
+}
+function advanceTestSize(maxSize){
+ const allowed=TEST_SIZES.filter(x=>x<=maxSize);
+ testSizeIndex=(testSizeIndex+1)%Math.max(1,allowed.length);
+ localStorage.setItem("v34TestSizeIndex",String(testSizeIndex));
+}
+function readPaper(){
+ try{return JSON.parse(localStorage.getItem("v34Paper")||"[]")}catch{return []}
+}
+function writePaper(x){localStorage.setItem("v34Paper",JSON.stringify(x));}
+function prunePaper(){
+ const cutoff=Date.now()-86400000; const x=readPaper().filter(e=>e.t>=cutoff); writePaper(x); return x;
+}
+function updatePaperUI(){
+ const x=prunePaper(); const total=x.reduce((a,e)=>a+e.net,0);
+ const by={}; for(const e of x) by[e.size]=(by[e.size]||0)+e.net;
+ const best=Object.entries(by).sort((a,b)=>b[1]-a[1])[0];
+ setText("paperSignals",String(x.length));
+ setText("paperNet",total.toFixed(4)+" USDC",total>0?"green":"");
+ setText("targetProgress",Math.min(999,total/0.8*100).toFixed(1)+"%",total>=0.8?"green":"");
+ setText("bestSize24h",best?"$"+best[0]+" · "+best[1].toFixed(4)+" USDC":"—",best?"green":"");
+}
+function recordPaperSignal(results,amount,gasReserve,slippagePct,minNet,durationSec){
+ if(durationSec>30) return;
+ const buffer=amount*(slippagePct/100);
+ const valid=results.filter(r=>r.ok).map(r=>({...r,net:r.gross-gasReserve-buffer})).filter(r=>r.net>=minNet).sort((a,b)=>b.net-a.net);
+ if(!valid.length) return;
+ const b=valid[0], x=prunePaper(); x.push({t:Date.now(),size:amount,pair:b.pair,route:b.route,net:b.net}); writePaper(x); updatePaperUI();
+}
+
 function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
  const buffer=amount*(slippagePct/100), board=document.getElementById("leaderboard");
  board.innerHTML="";
@@ -432,16 +482,18 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
 
 async function scan(){
  const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
- const amount=Number(document.getElementById("amount").value);
+ const maxAmount=Number(document.getElementById("amount").value);
+ const amount=getTestSize(maxAmount);
+ setText("testSize","$"+amount,"green");
  const gas=Number(document.getElementById("gasReserve").value);
  const slip=Number(document.getElementById("slippageBuffer").value);
  const minNet=Number(document.getElementById("minNetProfit").value);
  const maxGrossLossPct=Number(document.getElementById("maxGrossLossPct").value);
- if(!Number.isFinite(amount)||amount<=0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
+ if(!Number.isFinite(maxAmount)||maxAmount<25||maxAmount>100||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent="FAST SCANNING 7 PAIRS × 4 DEX…";
- log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. no persistent RPC lock; pair batches protect public RPCs; core 3-DEX routes protected; Alien Base isolated…";
+ btn.disabled=true; btn.textContent=`PROFIT HUNTING $${amount} × 7 PAIRS…`;
+ log.textContent=`$${amount} test running across WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. Stable V3.3.5 RPC protections remain active…`;
  const started=performance.now();
  try{
   await updateNetwork();
@@ -449,11 +501,13 @@ async function scan(){
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
+  recordPaperSignal(results,amount,gas,slip,minNet,durationSec);
   const complete=results.filter(r=>r.ok).length;
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const quoteFail=results.filter(r=>r.status==="QUOTE FAILURE").length;
   const fresh=durationSec<=30;
-  log.textContent=`FAST SCAN COMPLETE: ${complete}/7 VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · No transaction was executed.`;
+  log.textContent=`$${amount} PROFIT-HUNTER SCAN: ${complete}/7 VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
+  advanceTestSize(maxAmount);
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
@@ -465,6 +519,9 @@ async function scan(){
 }
 
 document.getElementById("scanBtn").addEventListener("click",scan);
+document.getElementById("resetPaper").addEventListener("click",()=>{writePaper([]);updatePaperUI();});
+setText("testSize","$"+getTestSize(Number(document.getElementById("amount").value)),"green");
+updatePaperUI();
 updateNetwork().catch(e=>{
  setText("rpcStatus","RPC ERROR — tap Scan to retry","red");
 });
