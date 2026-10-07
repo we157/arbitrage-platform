@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.3.4</title>
+<title>Arbitrage Scanner V3.3.5</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.3.4<br>7-PAIR 4-DEX<br>RPC STABILITY</div>
+<div class="badge">V3.3.5<br>7-PAIR 4-DEX<br>RPC STABILITY</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.3.4 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.3.5 keeps the seven proven pairs and removes MORPHO and ALB after repeated unusable direct-USDC tests. The original Uniswap V3 + Aerodrome + PancakeSwap V3 engine is protected, while Alien Base V2 is isolated so its failures cannot invalidate successful core routes. Too few completed routes are now reported as QUOTE FAILURE instead of POOR LIQUIDITY. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -104,7 +104,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.3.4 • 7-Pair Base Multi-DEX • RPC Stability Fix • RPC Concurrency Guard • Core 3-DEX Protected • Alien Base Isolated • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.3.5 • 7-Pair Base Multi-DEX • RPC Stability Fix • RPC Concurrency Guard • Core 3-DEX Protected • Alien Base Isolated • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -204,24 +204,34 @@ async function withRetry(fn){
 
 
 const QUOTE_TIMEOUT_MS=3500;
-const MAX_RPC_IN_FLIGHT=6;
-let rpcInFlight=0;
-const rpcWaiters=[];
-async function acquireRpcSlot(){
- if(rpcInFlight<MAX_RPC_IN_FLIGHT){rpcInFlight++;return;}
- await new Promise(resolve=>rpcWaiters.push(resolve));
- rpcInFlight++;
-}
-function releaseRpcSlot(){
- rpcInFlight=Math.max(0,rpcInFlight-1);
- const next=rpcWaiters.shift(); if(next) next();
-}
+// V3.3.5: do NOT use a persistent semaphore around public RPC calls.
+// A timed-out ethers request can continue in the browser; with a semaphore that
+// leaves later scans waiting behind stale calls.  Each RPC attempt is instead
+// independently time-bounded, while pair batching limits burst load.
 async function rpcCall(fn){
- await acquireRpcSlot();
- try{return await fn();}finally{releaseRpcSlot();}
+ return withTimeout(Promise.resolve().then(fn), QUOTE_TIMEOUT_MS);
 }
 function withTimeout(promise,ms=QUOTE_TIMEOUT_MS){
- return Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error("QUOTE TIMEOUT")),ms))]);
+ let timer;
+ return Promise.race([
+  Promise.resolve(promise).finally(()=>clearTimeout(timer)),
+  new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("QUOTE TIMEOUT")),ms);})
+ ]);
+}
+async function scanPairsBatched(amount,maxGrossLossPct){
+ const out=[];
+ const batchSize=3;
+ for(let i=0;i<PAIRS.length;i+=batchSize){
+  const batch=PAIRS.slice(i,i+batchSize);
+  const settled=await Promise.all(batch.map(p=>
+   withTimeout(scanPair(p,amount,maxGrossLossPct),15000).catch(e=>({
+    pair:p.symbol,ok:false,status:"QUOTE FAILURE",routes:[],completeRoutes:0,qualityRoutes:0,error:e?.message||"PAIR TIMEOUT"
+   }))
+  ));
+  out.push(...settled);
+  if(i+batchSize<PAIRS.length) await sleep(250);
+ }
+ return out;
 }
 
 async function aeroV2Quote(ctx,tokenIn,tokenOut,amountIn){
@@ -431,15 +441,11 @@ async function scan(){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent="FAST SCANNING 7 PAIRS × 4 DEX…";
- log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. RPC concurrency capped at 6; core 3-DEX routes protected; Alien Base isolated…";
+ log.textContent="Parallel scan running: WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. no persistent RPC lock; pair batches protect public RPCs; core 3-DEX routes protected; Alien Base isolated…";
  const started=performance.now();
  try{
   await updateNetwork();
-  const results=await Promise.all(PAIRS.map(p=>
-   withTimeout(scanPair(p,amount,maxGrossLossPct),18000).catch(e=>({
-    pair:p.symbol,ok:false,status:"UNAVAILABLE",routes:[],completeRoutes:0,qualityRoutes:0,error:e?.message||"PAIR TIMEOUT"
-   }))
-  ));
+  const results=await withTimeout(scanPairsBatched(amount,maxGrossLossPct),45000);
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
