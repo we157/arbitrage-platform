@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.4</title>
+<title>Arbitrage Scanner V3.4.1</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.3.5<br>7-PAIR 4-DEX<br>RPC STABILITY</div>
+<div class="badge">V3.4.1<br>$100 PROFIT<br>HUNTER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.4 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.4.1 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -117,7 +117,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.3.5 • 7-Pair Base Multi-DEX • RPC Stability Fix • RPC Concurrency Guard • Core 3-DEX Protected • Alien Base Isolated • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.4.1 • $100 Profit Hunter • $25/$50/$75/$100 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -493,7 +493,7 @@ async function scan(){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent=`PROFIT HUNTING $${amount} × 7 PAIRS…`;
- log.textContent=`$${amount} test running across WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. Stable V3.3.5 RPC protections remain active…`;
+ log.textContent=`$${amount} test running across WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. V3.4.1 Profit Hunter with stable RPC protections is active…`;
  const started=performance.now();
  try{
   await updateNetwork();
