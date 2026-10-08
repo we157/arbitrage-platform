@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.4.1</title>
+<title>Arbitrage Scanner V3.5</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.4.1<br>$100 PROFIT<br>HUNTER</div>
+<div class="badge">V3.5<br>OPPORTUNITY<br>EXPANSION</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.4.1 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.5 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -51,7 +51,13 @@ small{color:#71829d}
 <input id="amount" type="number" value="100" min="25" max="100" step="25">
 <div class="row"><span class="label">Auto Test Sizes</span><span class="value">$25 / $50 / $75 / $100</span></div>
 <div class="row"><span class="label">This Scan Size</span><span id="testSize" class="value green">$25</span></div>
-<div class="row"><span class="label">Pairs</span><span class="value">7</span></div>
+<label class="label" style="display:block;margin-top:14px">Scan Mode</label>
+<select id="scanMode" style="width:100%;padding:14px;background:#071326;color:#fff;border:1px solid #375174;border-radius:12px;font-size:17px">
+<option value="core">STABLE CORE — 7 pairs (original engine)</option>
+<option value="discovery">WETH BRIDGE DISCOVERY — 3 pairs (experimental)</option>
+</select>
+<div class="row"><span class="label">Pairs this scan</span><span id="pairCount" class="value">7</span></div>
+<p class="label">Discovery tests cbETH, wstETH and DAI using direct USDC routes plus USDC → WETH → token paths. Extra hops increase fees and gas; discovery uses the same conservative cost settings as core and is read-only. Switch back to Stable Core if public RPCs become slow.</p>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -117,7 +123,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.4.1 • $100 Profit Hunter • $25/$50/$75/$100 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.5 • Opportunity Expansion • $25/$50/$75/$100 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -156,6 +162,11 @@ const PAIRS=[
  {symbol:"VIRTUAL",address:"0x0b3e328455c4059EEb9e3f84b5543F74E24e7E1b",decimals:18},
 ];
 
+const DISCOVERY_PAIRS=[
+ {symbol:"cbETH",address:CBETH,decimals:18,bridge:true},
+ {symbol:"wstETH",address:WSTETH,decimals:18,bridge:true},
+ {symbol:"DAI",address:DAI,decimals:18,bridge:true}
+];
 const AERO_ABI=["function getAmountsOut(uint256 amountIn,(address from,address to,bool stable,address factory)[] routes) view returns (uint256[] amounts)"];
 const UNI_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96) params) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)"];
 const PANCAKE_ABI=UNI_ABI;
@@ -231,18 +242,18 @@ function withTimeout(promise,ms=QUOTE_TIMEOUT_MS){
   new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error("QUOTE TIMEOUT")),ms);})
  ]);
 }
-async function scanPairsBatched(amount,maxGrossLossPct){
+async function scanPairsBatched(amount,maxGrossLossPct,pairs=PAIRS){
  const out=[];
  const batchSize=3;
- for(let i=0;i<PAIRS.length;i+=batchSize){
-  const batch=PAIRS.slice(i,i+batchSize);
+ for(let i=0;i<pairs.length;i+=batchSize){
+  const batch=pairs.slice(i,i+batchSize);
   const settled=await Promise.all(batch.map(p=>
    withTimeout(scanPair(p,amount,maxGrossLossPct),15000).catch(e=>({
     pair:p.symbol,ok:false,status:"QUOTE FAILURE",routes:[],completeRoutes:0,qualityRoutes:0,error:e?.message||"PAIR TIMEOUT"
    }))
   ));
   out.push(...settled);
-  if(i+batchSize<PAIRS.length) await sleep(250);
+  if(i+batchSize<pairs.length) await sleep(250);
  }
  return out;
 }
@@ -340,12 +351,34 @@ const VENUES=["Uniswap V3","Aerodrome","PancakeSwap V3","Alien Base V2"];
 function feeText(f){return (f/10000).toFixed(2)+"%";}
 
 
+async function discoveryVenueQuote(ctx,venue,tokenIn,tokenOut,amountIn){
+ // For discovery only, compare direct pool against a WETH bridge on the same DEX.
+ // Never route WETH->WETH or count a WETH bridge as a separate independent DEX.
+ let direct=null, bridge=null;
+ try{direct=await venueQuote(ctx,venue,tokenIn,tokenOut,amountIn)}catch(e){}
+ if(tokenIn.toLowerCase()!==WETH.toLowerCase() && tokenOut.toLowerCase()!==WETH.toLowerCase()){
+  try{
+   const a=await venueQuote(ctx,venue,tokenIn,WETH,amountIn);
+   if(a?.amountOut>0n){
+    const b=await venueQuote(ctx,venue,WETH,tokenOut,a.amountOut);
+    if(b?.amountOut>0n)bridge={amountOut:b.amountOut,detail:"via WETH (2 hops)"};
+   }
+  }catch(e){}
+ }
+ if(!direct&&!bridge) throw new Error("NO DIRECT OR WETH BRIDGE QUOTE");
+ if(bridge && (!direct || bridge.amountOut>direct.amountOut)) return bridge;
+ return direct;
+}
+
 async function scanPair(pair,amount,maxGrossLossPct){
  const start=parseUnits(amount.toString(),6);
  const CORE=["Uniswap V3","Aerodrome","PancakeSwap V3"];
+ const discovery=!!pair.bridge;
+ const venues=discovery?CORE:VENUES;
+ const quote=discovery?discoveryVenueQuote:venueQuote;
 
- const first=await Promise.all(VENUES.map(async venue=>{
-  const q=await withRetry(ctx=>venueQuote(ctx,venue,USDC,pair.address,start));
+ const first=await Promise.all(venues.map(async venue=>{
+  const q=await withRetry(ctx=>quote(ctx,venue,USDC,pair.address,start));
   return {venue,...q};
  }));
  const firstFailures=first.filter(x=>!x.ok).length;
@@ -353,10 +386,10 @@ async function scanPair(pair,amount,maxGrossLossPct){
  const jobs=[];
  for(const a of first){
   if(!a.ok) continue;
-  for(const exit of VENUES){
+  for(const exit of venues){
    if(exit===a.venue) continue;
    jobs.push((async()=>{
-    const b=await withRetry(ctx=>venueQuote(ctx,exit,pair.address,USDC,a.result.amountOut));
+    const b=await withRetry(ctx=>quote(ctx,exit,pair.address,USDC,a.result.amountOut));
     if(!b.ok) return {ok:false};
     const final=Number(formatUnits(b.result.amountOut,6));
     const gross=final-amount, grossPct=gross/amount*100;
@@ -483,6 +516,9 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
 async function scan(){
  const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
  const maxAmount=Number(document.getElementById("amount").value);
+ const discovery=document.getElementById("scanMode").value==="discovery";
+ const selectedPairs=discovery?DISCOVERY_PAIRS:PAIRS;
+ setText("pairCount",String(selectedPairs.length));
  const amount=getTestSize(maxAmount);
  setText("testSize","$"+amount,"green");
  const gas=Number(document.getElementById("gasReserve").value);
@@ -492,12 +528,12 @@ async function scan(){
  if(!Number.isFinite(maxAmount)||maxAmount<25||maxAmount>100||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent=`PROFIT HUNTING $${amount} × 7 PAIRS…`;
- log.textContent=`$${amount} test running across WETH, cbBTC, AERO, EURC, USDbC, USDS and VIRTUAL. V3.4.1 Profit Hunter with stable RPC protections is active…`;
+ btn.disabled=true; btn.textContent=`PROFIT HUNTING $${amount} × ${selectedPairs.length} PAIRS…`;
+ log.textContent=discovery?`$${amount} WETH-bridge discovery on cbETH, wstETH and DAI; this is experimental and may take longer.`:`$${amount} stable core scan across seven proven pairs.`;
  const started=performance.now();
  try{
   await updateNetwork();
-  const results=await withTimeout(scanPairsBatched(amount,maxGrossLossPct),45000);
+  const results=await withTimeout(scanPairsBatched(amount,maxGrossLossPct,selectedPairs),60000);
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
@@ -506,7 +542,7 @@ async function scan(){
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const quoteFail=results.filter(r=>r.status==="QUOTE FAILURE").length;
   const fresh=durationSec<=30;
-  log.textContent=`$${amount} PROFIT-HUNTER SCAN: ${complete}/7 VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
+  log.textContent=`$${amount} PROFIT-HUNTER SCAN: ${complete}/${selectedPairs.length} VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
   advanceTestSize(maxAmount);
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
@@ -518,6 +554,11 @@ async function scan(){
  }
 }
 
+document.getElementById("scanMode").addEventListener("change",()=>{
+ const isDiscovery=document.getElementById("scanMode").value==="discovery";
+ setText("pairCount",isDiscovery?"3":"7");
+ document.getElementById("log").textContent=isDiscovery?"Discovery selected: 3 experimental pairs with WETH bridge; core engine remains unchanged.":"Stable Core selected: original seven pairs.";
+});
 document.getElementById("scanBtn").addEventListener("click",scan);
 document.getElementById("resetPaper").addEventListener("click",()=>{writePaper([]);updatePaperUI();});
 setText("testSize","$"+getTestSize(Number(document.getElementById("amount").value)),"green");
