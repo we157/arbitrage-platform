@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.5</title>
+<title>Arbitrage Scanner V3.6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.5<br>OPPORTUNITY<br>EXPANSION</div>
+<div class="badge">V3.6<br>5-SIZE<br>QUOTE TESTER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.5 keeps the stable seven-pair Base engine and turns it into a read-only $100 Profit Hunter. Each scan automatically rotates through $25, $50, $75 and $100 test sizes, so we can measure which small trade size produces the best estimated net opportunities without increasing RPC load. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.6 retains the V3.5 route discovery engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; it does not yet implement new triangular arbitrage routes or verified live execution-cost estimation. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -48,9 +48,9 @@ small{color:#71829d}
 <div class="card">
 <h2>💰 Scan Settings</h2>
 <label class="label">Maximum Trade Size (USDC)</label>
-<input id="amount" type="number" value="100" min="25" max="100" step="25">
-<div class="row"><span class="label">Auto Test Sizes</span><span class="value">$25 / $50 / $75 / $100</span></div>
-<div class="row"><span class="label">This Scan Size</span><span id="testSize" class="value green">$25</span></div>
+<input id="amount" type="number" value="500" min="100" max="500" step="100">
+<div class="row"><span class="label">Auto Test Sizes</span><span class="value">$100 / $200 / $300 / $400 / $500</span></div>
+<div class="row"><span class="label">This Scan Size</span><span id="testSize" class="value green">$100</span></div>
 <label class="label" style="display:block;margin-top:14px">Scan Mode</label>
 <select id="scanMode" style="width:100%;padding:14px;background:#071326;color:#fff;border:1px solid #375174;border-radius:12px;font-size:17px">
 <option value="core">STABLE CORE — 7 pairs (original engine)</option>
@@ -102,7 +102,7 @@ small{color:#71829d}
 </div>
 
 <div class="card">
-<h2>🎯 $100 Profit Hunter</h2>
+<h2>🎯 $100–$500 Quote Tester</h2>
 <div class="row"><span class="label">24h Qualifying Signals</span><span id="paperSignals" class="value">0</span></div>
 <div class="row"><span class="label">24h Paper Net Total</span><span id="paperNet" class="value">0.0000 USDC</span></div>
 <div class="row"><span class="label">Daily Target</span><span class="value">+0.80 USDC</span></div>
@@ -123,7 +123,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.5 • Opportunity Expansion • $25/$50/$75/$100 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.6 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -421,8 +421,8 @@ async function scanPair(pair,amount,maxGrossLossPct){
    quoteFailures:failures,rejectedBest:sorted[0]||null};
 }
 
-const TEST_SIZES=[25,50,75,100];
-let testSizeIndex=Number(localStorage.getItem("v34TestSizeIndex")||0)%TEST_SIZES.length;
+const TEST_SIZES=[100,200,300,400,500];
+let testSizeIndex=Number(localStorage.getItem("v36TestSizeIndex")||0)%TEST_SIZES.length;
 function getTestSize(maxSize){
  const allowed=TEST_SIZES.filter(x=>x<=maxSize);
  if(!allowed.length) return Math.max(1,maxSize);
@@ -432,12 +432,12 @@ function getTestSize(maxSize){
 function advanceTestSize(maxSize){
  const allowed=TEST_SIZES.filter(x=>x<=maxSize);
  testSizeIndex=(testSizeIndex+1)%Math.max(1,allowed.length);
- localStorage.setItem("v34TestSizeIndex",String(testSizeIndex));
+ localStorage.setItem("v36TestSizeIndex",String(testSizeIndex));
 }
 function readPaper(){
- try{return JSON.parse(localStorage.getItem("v34Paper")||"[]")}catch{return []}
+ try{return JSON.parse(localStorage.getItem("v36Paper")||"[]")}catch{return []}
 }
-function writePaper(x){localStorage.setItem("v34Paper",JSON.stringify(x));}
+function writePaper(x){localStorage.setItem("v36Paper",JSON.stringify(x));}
 function prunePaper(){
  const cutoff=Date.now()-86400000; const x=readPaper().filter(e=>e.t>=cutoff); writePaper(x); return x;
 }
@@ -525,10 +525,10 @@ async function scan(){
  const slip=Number(document.getElementById("slippageBuffer").value);
  const minNet=Number(document.getElementById("minNetProfit").value);
  const maxGrossLossPct=Number(document.getElementById("maxGrossLossPct").value);
- if(!Number.isFinite(maxAmount)||maxAmount<25||maxAmount>100||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
+ if(!Number.isFinite(maxAmount)||maxAmount<100||maxAmount>500||maxAmount%100!==0||gas<0||slip<0||minNet<0||!Number.isFinite(maxGrossLossPct)||maxGrossLossPct<=0){
   log.textContent="Enter valid scan settings."; return;
  }
- btn.disabled=true; btn.textContent=`PROFIT HUNTING $${amount} × ${selectedPairs.length} PAIRS…`;
+ btn.disabled=true; btn.textContent=`QUOTING $${amount} × ${selectedPairs.length} PAIRS…`;
  log.textContent=discovery?`$${amount} WETH-bridge discovery on cbETH, wstETH and DAI; this is experimental and may take longer.`:`$${amount} stable core scan across seven proven pairs.`;
  const started=performance.now();
  try{
@@ -542,7 +542,7 @@ async function scan(){
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const quoteFail=results.filter(r=>r.status==="QUOTE FAILURE").length;
   const fresh=durationSec<=30;
-  log.textContent=`$${amount} PROFIT-HUNTER SCAN: ${complete}/${selectedPairs.length} VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
+  log.textContent=`$${amount} QUOTE-SIZE SCAN: ${complete}/${selectedPairs.length} VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
   advanceTestSize(maxAmount);
  }catch(e){
   const durationSec=(performance.now()-started)/1000;
