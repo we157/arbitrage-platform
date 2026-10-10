@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.7</title>
+<title>Arbitrage Scanner V3.8</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.7<br>5-SIZE<br>QUOTE TESTER</div>
+<div class="badge">V3.8<br>5-SIZE<br>QUOTE TESTER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.7 adds an isolated experimental triangular discovery mode to the stable V3.7 engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; triangular routes are quote-only and gas estimates remain unverified assumptions. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.8 adds an isolated experimental triangular discovery mode to the stable V3.8 engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; triangular routes are quote-only and gas estimates remain unverified assumptions. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -85,6 +85,20 @@ small{color:#71829d}
 </div>
 
 <div class="card">
+<h2>🔬 Profitability Diagnostics</h2>
+<p class="label">Best completed route per pair only. Not an exhaustive ranking of every route. Costs below are user-defined assumptions, not simulated transaction gas.</p>
+<div class="row"><span class="label">Pairs with positive gross</span><span id="positiveGrossCount" class="value">—</span></div>
+<div class="row"><span class="label">Pairs with positive estimated net</span><span id="positiveNetCount" class="value">—</span></div>
+<div class="row"><span class="label">Best Gross Candidate</span><span id="diagGross" class="value">—</span></div>
+<div class="row"><span class="label">Best Estimated-Net Candidate</span><span id="diagNet" class="value">—</span></div>
+<div class="row"><span class="label">Estimated Gas Allowance</span><span id="diagGas" class="value">—</span></div>
+<div class="row"><span class="label">Estimated Execution Buffer</span><span id="diagBuffer" class="value">—</span></div>
+<div class="row"><span class="label">Gross Required to Break Even</span><span id="diagBreakEven" class="value">—</span></div>
+<div class="row"><span class="label">Gap to Break Even</span><span id="diagGap" class="value">—</span></div>
+<div class="row"><span class="label">Gap to Minimum Profit</span><span id="diagTargetGap" class="value">—</span></div>
+</div>
+
+<div class="card">
 <h2>🏆 Best Complete Result</h2>
 <div class="row"><span class="label">Pair</span><span id="bestPair" class="value">—</span></div>
 <div class="row"><span class="label">Best DEX Route</span><span id="bestRoute" class="value">—</span></div>
@@ -124,7 +138,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.7 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.8 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -520,6 +534,30 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
  }
 }
 
+function renderDiagnostics(results,amount,gasReserve,slippagePct,minNet){
+ const valid=results.filter(r=>r.ok);
+ const buffer=amount*slippagePct/100;
+ const netOf=r=>r.gross-gasReserve*(r.gasMultiplier||1)-buffer*(r.bufferMultiplier||1);
+ setText("positiveGrossCount",valid.filter(r=>r.gross>0).length+" / "+valid.length);
+ setText("positiveNetCount",valid.filter(r=>netOf(r)>0).length+" / "+valid.length);
+ const ids=["diagGross","diagNet","diagGas","diagBuffer","diagBreakEven","diagGap","diagTargetGap"];
+ if(!valid.length){ids.forEach(id=>setText(id,"—"));return;}
+ const grossBest=[...valid].sort((a,b)=>b.gross-a.gross)[0];
+ const netBest=[...valid].sort((a,b)=>netOf(b)-netOf(a))[0];
+ const gas=gasReserve*(netBest.gasMultiplier||1);
+ const execution=buffer*(netBest.bufferMultiplier||1);
+ const breakeven=gas+execution;
+ const gap=Math.max(0,breakeven-netBest.gross);
+ const targetGap=Math.max(0,breakeven+minNet-netBest.gross);
+ setText("diagGross",grossBest.pair+" · "+grossBest.route+" · "+grossBest.gross.toFixed(6)+" USDC",grossBest.gross>0?"green":"red");
+ setText("diagNet",netBest.pair+" · "+netBest.route+" · "+netOf(netBest).toFixed(6)+" USDC",netOf(netBest)>0?"green":"red");
+ setText("diagGas",gas.toFixed(6)+" USDC (assumed)");
+ setText("diagBuffer",execution.toFixed(6)+" USDC (assumed)");
+ setText("diagBreakEven","+"+breakeven.toFixed(6)+" USDC gross");
+ setText("diagGap",gap.toFixed(6)+" USDC");
+ setText("diagTargetGap",targetGap.toFixed(6)+" USDC");
+}
+
 function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
  const valid=results.filter(r=>r.ok);
  const fresh=durationSec<=30;
@@ -582,6 +620,7 @@ async function scan(){
     : await withTimeout(scanPairsBatched(amount,maxGrossLossPct,selectedPairs),60000);
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
+  renderDiagnostics(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
   recordPaperSignal(results,amount,gas,slip,minNet,durationSec);
   const complete=results.filter(r=>r.ok).length;
