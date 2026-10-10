@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.8</title>
+<title>Arbitrage Scanner V3.9</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,12 +30,10 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.8<br>5-SIZE<br>QUOTE TESTER</div>
+<div class="badge">V3.9<br>ROUTE<br>VALIDATION</div>
 </div>
 
-<div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.8 adds an isolated experimental triangular discovery mode to the stable V3.8 engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; triangular routes are quote-only and gas estimates remain unverified assumptions. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
-</div>
+<div class="card notice">🔬 V3.9 Opportunity Discovery &amp; Route Validation. Keeps the V3.8 read-only Base quote engines and automatic $100 / $200 / $300 / $400 / $500 rotation. Adds per-route gross diagnostics for triangular scans, start/end block drift monitoring, and an explicit UNVERIFIED flag for asynchronous cross-RPC quotes. A successful quote is not an executable trade. No wallet, approvals or transactions.</div>
 
 <div class="card">
 <h2>🌐 Base Network</h2>
@@ -58,7 +56,7 @@ small{color:#71829d}
 <option value="triangle">TRIANGULAR DISCOVERY — 3 tokens (experimental)</option>
 </select>
 <div class="row"><span class="label">Pairs this scan</span><span id="pairCount" class="value">7</span></div>
-<p class="label">Discovery tests cbETH, wstETH and DAI using direct USDC routes plus USDC → WETH → token paths. Extra hops increase fees and gas; discovery uses the same conservative cost settings as core and is read-only. Switch back to Stable Core if public RPCs become slow.</p>
+<p id="modeHelp" class="label">Stable Core: seven established USDC round-trip pairs. Read-only, estimated costs.</p>
 <div class="row"><span class="label">Maximum Attempts</span><span class="value">3 per quote</span></div>
 <label class="label">Gas Reserve per Round Trip (USDC)</label>
 <input id="gasReserve" type="number" value="0.05" min="0" step="0.01">
@@ -86,6 +84,11 @@ small{color:#71829d}
 
 <div class="card">
 <h2>🔬 Profitability Diagnostics</h2>
+<div class="row"><span class="label">Block range (start → end)</span><span id="blockRange" class="value">—</span></div>
+<div class="row"><span class="label">Quote consistency</span><span id="quoteConsistency" class="value yellow">NOT YET CHECKED</span></div>
+<div class="row"><span class="label">Triangular routes with positive gross</span><span id="routePositiveGross" class="value">—</span></div>
+<div class="row"><span class="label">Triangular routes with positive estimated net</span><span id="routePositiveNet" class="value">—</span></div>
+<div class="row"><span class="label">Best triangular route (all completed)</span><span id="routeBestGross" class="value">—</span></div>
 <p class="label">Best completed route per pair only. Not an exhaustive ranking of every route. Costs below are user-defined assumptions, not simulated transaction gas.</p>
 <div class="row"><span class="label">Pairs with positive gross</span><span id="positiveGrossCount" class="value">—</span></div>
 <div class="row"><span class="label">Pairs with positive estimated net</span><span id="positiveNetCount" class="value">—</span></div>
@@ -138,7 +141,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.8 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.9 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -424,7 +427,7 @@ async function scanPair(pair,amount,maxGrossLossPct){
 
  if(ranked.length) return {pair:pair.symbol,ok:true,status:"VALID",...ranked[0],
    completeRoutes:routes.length,validRoutes:quality.length,
-   coreComplete:coreRoutes.length,coreValid:coreQuality.length,quoteFailures:failures};
+   coreComplete:coreRoutes.length,coreValid:coreQuality.length,quoteFailures:failures,allRoutes:paths};
 
  const sorted=[...routes].sort((a,b)=>b.final-a.final);
  if(coreRoutes.length>=2) return {pair:pair.symbol,ok:false,status:"POOR LIQUIDITY",
@@ -469,10 +472,10 @@ async function scanTriangle(pair,amount,maxGrossLossPct){
  const valid=paths.filter(x=>x.quality).sort((a,b)=>b.gross-a.gross);
  const best=valid[0];
  if(best)return {pair:pair.symbol,ok:true,status:"VALID",...best,completeRoutes:completed,
-  validRoutes:valid.length,coreComplete:completed,coreValid:valid.length,quoteFailures:failures};
+  validRoutes:valid.length,coreComplete:completed,coreValid:valid.length,quoteFailures:failures,allRoutes:paths};
  return {pair:pair.symbol,ok:false,status:completed?"POOR LIQUIDITY":"QUOTE FAILURE",
   completeRoutes:completed,validRoutes:0,coreComplete:completed,coreValid:0,quoteFailures:failures,
-  rejectedBest:paths.sort((a,b)=>b.gross-a.gross)[0]||null};
+  rejectedBest:paths.sort((a,b)=>b.gross-a.gross)[0]||null,allRoutes:paths};
 }
 const TEST_SIZES=[100,200,300,400,500];
 let testSizeIndex=Number(localStorage.getItem("v36TestSizeIndex")||0)%TEST_SIZES.length;
@@ -534,6 +537,28 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
  }
 }
 
+function renderRouteDiagnostics(results,amount,gasReserve,slippagePct,mode){
+ const routes=mode==="triangle"?results.flatMap(r=>r.allRoutes||[]):[];
+ if(mode!=="triangle"){
+  ["routePositiveGross","routePositiveNet","routeBestGross"].forEach(id=>setText(id,"Triangular mode only"));return;
+ }
+ const net=r=>r.gross-gasReserve*(r.gasMultiplier||1)-amount*slippagePct/100*(r.bufferMultiplier||1);
+ setText("routePositiveGross",routes.filter(r=>r.gross>0).length+" / "+routes.length);
+ setText("routePositiveNet",routes.filter(r=>net(r)>0).length+" / "+routes.length);
+ const best=[...routes].sort((a,b)=>b.gross-a.gross)[0];
+ setText("routeBestGross",best?best.route+" · "+best.gross.toFixed(6)+" USDC":"No completed routes",best?.gross>0?"green":"red");
+}
+async function sampleBlock(){
+ try{return await withTimeout(makeContext(activeRpcIndex).provider.getBlockNumber(),3500)}catch(e){return null}
+}
+function showBlockValidation(start,end){
+ if(start==null||end==null){setText("blockRange","Unavailable");setText("quoteConsistency","UNVERIFIED — block sampling failed","yellow");return false}
+ const drift=Math.abs(end-start);
+ setText("blockRange",start+" → "+end+" (Δ "+drift+")");
+ // Samples do NOT pin quotes to a block; even drift=0 is unverified.
+ setText("quoteConsistency",drift>2?"UNVERIFIED — BLOCK DRIFT > 2":"UNVERIFIED — quotes not block-pinned","yellow");
+ return false;
+}
 function renderDiagnostics(results,amount,gasReserve,slippagePct,minNet){
  const valid=results.filter(r=>r.ok);
  const buffer=amount*slippagePct/100;
@@ -611,6 +636,7 @@ async function scan(){
  const started=performance.now();
  try{
   await updateNetwork();
+  const startBlock=await sampleBlock();
   const results=triangle
     ? await withTimeout((async()=>{const out=[];for(const p of selectedPairs){
         out.push(await withTimeout(scanTriangle(p,amount,maxGrossLossPct),22000).catch(e=>({
@@ -618,11 +644,15 @@ async function scan(){
           coreComplete:0,coreValid:0,quoteFailures:1})));
       }return out;})(),85000)
     : await withTimeout(scanPairsBatched(amount,maxGrossLossPct,selectedPairs),60000);
+  const endBlock=await sampleBlock();
+  showBlockValidation(startBlock,endBlock);
   const durationSec=(performance.now()-started)/1000;
+  renderRouteDiagnostics(results,amount,gas,slip,mode);
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderDiagnostics(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
-  recordPaperSignal(results,amount,gas,slip,minNet,durationSec);
+  // Cross-RPC asynchronous quotes are unverified: do not record paper signals as actionable.
+  // Existing historical paper records remain viewable until manually reset.
   const complete=results.filter(r=>r.ok).length;
   const poor=results.filter(r=>r.status==="POOR LIQUIDITY").length;
   const quoteFail=results.filter(r=>r.status==="QUOTE FAILURE").length;
@@ -630,6 +660,7 @@ async function scan(){
   log.textContent=`$${amount} QUOTE-SIZE SCAN: ${complete}/${selectedPairs.length} VALID · ${poor} POOR LIQUIDITY · ${quoteFail} QUOTE FAILURE · ${durationSec.toFixed(2)}s · ${fresh?"FRESH":"STALE (>30s)"} · Next scan tests another size. No transaction was executed.`;
   advanceTestSize(maxAmount);
  }catch(e){
+  setText("quoteConsistency","UNVERIFIED — scan error","red");
   const durationSec=(performance.now()-started)/1000;
   setText("scanDuration",durationSec.toFixed(2)+" seconds","yellow");
   setText("freshness","SCAN ERROR","red");
@@ -640,7 +671,9 @@ async function scan(){
 }
 
 document.getElementById("scanMode").addEventListener("change",()=>{
- const isDiscovery=document.getElementById("scanMode").value==="discovery";
+ const mode=document.getElementById("scanMode").value;
+ const isDiscovery=mode==="discovery";
+ document.getElementById("modeHelp").textContent=mode==="triangle"?"Triangular Discovery: USDC → WETH → AERO, cbBTC or VIRTUAL → USDC; three DEX quotes per cycle. Three swaps increase costs. Quotes are asynchronous, not block-pinned and not execution simulations.":isDiscovery?"WETH Bridge Discovery: cbETH, wstETH and DAI; direct USDC and WETH-bridge quotes. Extra hops increase fees and gas.":"Stable Core: seven established USDC round-trip pairs. Read-only, estimated costs.";
  setText("pairCount",document.getElementById("scanMode").value==="core"?"7":"3");
  document.getElementById("log").textContent=document.getElementById("scanMode").value==="triangle"?"Triangular discovery: 3 experimental tokens; 3 swaps per cycle; costs are assumptions.":isDiscovery?"Discovery selected: 3 experimental pairs with WETH bridge; core engine remains unchanged.":"Stable Core selected: original seven pairs.";
 });
