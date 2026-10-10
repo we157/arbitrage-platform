@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arbitrage Scanner V3.6</title>
+<title>Arbitrage Scanner V3.7</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#07101f;color:#eef4ff}
@@ -30,11 +30,11 @@ small{color:#71829d}
 <div class="container">
 <div class="header">
 <h1>⚡ Arbitrage<br>Scanner</h1>
-<div class="badge">V3.6<br>5-SIZE<br>QUOTE TESTER</div>
+<div class="badge">V3.7<br>5-SIZE<br>QUOTE TESTER</div>
 </div>
 
 <div class="card notice">
-🔀 Live read-only Base multi-DEX scanner. V3.6 retains the V3.5 route discovery engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; it does not yet implement new triangular arbitrage routes or verified live execution-cost estimation. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
+🔀 Live read-only Base multi-DEX scanner. V3.7 adds an isolated experimental triangular discovery mode to the stable V3.7 engine and automatically rotates through $100, $200, $300, $400 and $500 quote sizes, one per scan. This update changes trade-size testing only; triangular routes are quote-only and gas estimates remain unverified assumptions. A 24-hour paper-opportunity tracker records qualifying scanner signals only. No wallet, approval or transaction is used.
 </div>
 
 <div class="card">
@@ -55,6 +55,7 @@ small{color:#71829d}
 <select id="scanMode" style="width:100%;padding:14px;background:#071326;color:#fff;border:1px solid #375174;border-radius:12px;font-size:17px">
 <option value="core">STABLE CORE — 7 pairs (original engine)</option>
 <option value="discovery">WETH BRIDGE DISCOVERY — 3 pairs (experimental)</option>
+<option value="triangle">TRIANGULAR DISCOVERY — 3 tokens (experimental)</option>
 </select>
 <div class="row"><span class="label">Pairs this scan</span><span id="pairCount" class="value">7</span></div>
 <p class="label">Discovery tests cbETH, wstETH and DAI using direct USDC routes plus USDC → WETH → token paths. Extra hops increase fees and gas; discovery uses the same conservative cost settings as core and is read-only. Switch back to Stable Core if public RPCs become slow.</p>
@@ -123,7 +124,7 @@ small{color:#71829d}
 <div class="row"><span class="label">Mode</span><span class="value green">READ ONLY</span></div>
 </div>
 
-<p style="text-align:center;margin:35px 0"><small>V3.6 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
+<p style="text-align:center;margin:35px 0"><small>V3.7 • $100/$200/$300/$400/$500 Rotation • 24-Hour Paper Tracker • Stable V3.3.5 RPC Engine • Read Only</small></p>
 </div>
 
 <script type="module">
@@ -421,6 +422,44 @@ async function scanPair(pair,amount,maxGrossLossPct){
    quoteFailures:failures,rejectedBest:sorted[0]||null};
 }
 
+// Experimental 3-leg cross-DEX triangular cycles, distinct from round-trip mode.
+const TRIANGLE_PAIRS=PAIRS.filter(p=>["AERO","cbBTC","VIRTUAL"].includes(p.symbol));
+const TRIANGLE_VENUES=["Uniswap V3","Aerodrome","PancakeSwap V3"];
+async function scanTriangle(pair,amount,maxGrossLossPct){
+ const initial=parseUnits(String(amount),6), paths=[];
+ let failures=0, completed=0;
+ // Stage 1 is common to every triangle and is quoted only once per venue.
+ const first=await Promise.all(TRIANGLE_VENUES.map(async v=>({v,q:await withRetry(ctx=>venueQuote(ctx,v,USDC,WETH,initial))})));
+ for(const a of first){
+  if(!a.q.ok){failures++;continue;}
+  const second=await Promise.all(TRIANGLE_VENUES.filter(v=>v!==a.v).map(async v=>({
+   v,q:await withRetry(ctx=>venueQuote(ctx,v,WETH,pair.address,a.q.result.amountOut))
+  })));
+  for(const b of second){
+   if(!b.q.ok){failures++;continue;}
+   const third=await Promise.all(TRIANGLE_VENUES.filter(v=>v!==b.v).map(async v=>({
+    v,q:await withRetry(ctx=>venueQuote(ctx,v,pair.address,USDC,b.q.result.amountOut))
+   })));
+   for(const c of third){
+    if(!c.q.ok){failures++;continue;}
+    completed++;
+    const final=Number(formatUnits(c.q.result.amountOut,6));
+    const gross=final-amount,grossPct=100*gross/amount;
+    paths.push({ok:true,route:a.v+" → "+b.v+" → "+c.v,final,gross,grossPct,
+      quality:grossPct>=-maxGrossLossPct,core:true,
+      // Three swaps: conservative proxy, not a verified execution estimate.
+      gasMultiplier:1.5,bufferMultiplier:1.5});
+   }
+  }
+ }
+ const valid=paths.filter(x=>x.quality).sort((a,b)=>b.gross-a.gross);
+ const best=valid[0];
+ if(best)return {pair:pair.symbol,ok:true,status:"VALID",...best,completeRoutes:completed,
+  validRoutes:valid.length,coreComplete:completed,coreValid:valid.length,quoteFailures:failures};
+ return {pair:pair.symbol,ok:false,status:completed?"POOR LIQUIDITY":"QUOTE FAILURE",
+  completeRoutes:completed,validRoutes:0,coreComplete:completed,coreValid:0,quoteFailures:failures,
+  rejectedBest:paths.sort((a,b)=>b.gross-a.gross)[0]||null};
+}
 const TEST_SIZES=[100,200,300,400,500];
 let testSizeIndex=Number(localStorage.getItem("v36TestSizeIndex")||0)%TEST_SIZES.length;
 function getTestSize(maxSize){
@@ -453,7 +492,7 @@ function updatePaperUI(){
 function recordPaperSignal(results,amount,gasReserve,slippagePct,minNet,durationSec){
  if(durationSec>30) return;
  const buffer=amount*(slippagePct/100);
- const valid=results.filter(r=>r.ok).map(r=>({...r,net:r.gross-gasReserve-buffer})).filter(r=>r.net>=minNet).sort((a,b)=>b.net-a.net);
+ const valid=results.filter(r=>r.ok).map(r=>({...r,net:r.gross-gasReserve*(r.gasMultiplier||1)-buffer*(r.bufferMultiplier||1)})).filter(r=>r.net>=minNet).sort((a,b)=>b.net-a.net);
  if(!valid.length) return;
  const b=valid[0], x=prunePaper(); x.push({t:Date.now(),size:amount,pair:b.pair,route:b.route,net:b.net}); writePaper(x); updatePaperUI();
 }
@@ -472,7 +511,7 @@ function renderLeaderboard(results,amount,gasReserve,slippagePct,minNet){
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value yellow">QUOTE FAILURE</span></div>
    <div class="pairMeta">${diag}. Too few completed routes to judge liquidity; successful quotes were preserved.</div>`;
   }else{
-   const net=r.gross-gasReserve-buffer, good=net>=minNet;
+   const net=r.gross-gasReserve*(r.gasMultiplier||1)-buffer*(r.bufferMultiplier||1), good=net>=minNet;
    div.innerHTML=`<div class="pairTop"><span class="pairName">${r.pair} / USDC</span><span class="value ${good?"green":"red"}">${good?"NET OPPORTUNITY ✓":"NO NET PROFIT"}</span></div>
    <div class="pairMeta">VALID · Best ${r.route} · Final ${r.final.toFixed(6)} USDC · Gross ${(r.gross>=0?"+":"")}${r.gross.toFixed(6)} (${r.grossPct.toFixed(3)}%) · Est. Net ${(net>=0?"+":"")}${net.toFixed(6)} USDC · ${diag}</div>`;
    r.net=net;
@@ -493,15 +532,15 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
   return;
  }
  const buffer=amount*(slippagePct/100);
- for(const r of valid) r.net=r.gross-gasReserve-buffer;
+ for(const r of valid) r.net=r.gross-gasReserve*(r.gasMultiplier||1)-buffer*(r.bufferMultiplier||1);
  valid.sort((a,b)=>b.net-a.net);
  const b=valid[0];
  setText("bestPair",b.pair+" / USDC");
  setText("bestRoute","Route "+b.route);
  setText("bestFinal",b.final.toFixed(6)+" USDC");
  setText("bestGross",(b.gross>=0?"+":"")+b.gross.toFixed(6)+" USDC",b.gross>0?"green":"red");
- setText("gasCost","-"+gasReserve.toFixed(4)+" USDC");
- setText("bufferCost","-"+buffer.toFixed(4)+" USDC ("+slippagePct.toFixed(2)+"%)");
+ setText("gasCost","-"+(gasReserve*(b.gasMultiplier||1)).toFixed(4)+" USDC (assumed reserve)");
+ setText("bufferCost","-"+(buffer*(b.bufferMultiplier||1)).toFixed(4)+" USDC (assumed execution buffer)");
  setText("netPL",(b.net>=0?"+":"")+b.net.toFixed(6)+" USDC",b.net>0?"green":"red");
  const pct=b.net/amount*100;
  setText("netPct",(pct>=0?"+":"")+pct.toFixed(4)+"%",pct>0?"green":"red");
@@ -516,8 +555,9 @@ function renderBest(results,amount,gasReserve,slippagePct,minNet,durationSec){
 async function scan(){
  const btn=document.getElementById("scanBtn"),log=document.getElementById("log");
  const maxAmount=Number(document.getElementById("amount").value);
- const discovery=document.getElementById("scanMode").value==="discovery";
- const selectedPairs=discovery?DISCOVERY_PAIRS:PAIRS;
+ const mode=document.getElementById("scanMode").value;
+ const discovery=mode==="discovery", triangle=mode==="triangle";
+ const selectedPairs=triangle?TRIANGLE_PAIRS:(discovery?DISCOVERY_PAIRS:PAIRS);
  setText("pairCount",String(selectedPairs.length));
  const amount=getTestSize(maxAmount);
  setText("testSize","$"+amount,"green");
@@ -529,11 +569,17 @@ async function scan(){
   log.textContent="Enter valid scan settings."; return;
  }
  btn.disabled=true; btn.textContent=`QUOTING $${amount} × ${selectedPairs.length} PAIRS…`;
- log.textContent=discovery?`$${amount} WETH-bridge discovery on cbETH, wstETH and DAI; this is experimental and may take longer.`:`$${amount} stable core scan across seven proven pairs.`;
+ log.textContent=triangle?`$${amount} experimental USDC → WETH → token → USDC triangular scan; gas and execution costs are conservative assumptions, not transaction estimates.`:discovery?`$${amount} WETH-bridge discovery on cbETH, wstETH and DAI; this is experimental and may take longer.`:`$${amount} stable core scan across seven proven pairs.`;
  const started=performance.now();
  try{
   await updateNetwork();
-  const results=await withTimeout(scanPairsBatched(amount,maxGrossLossPct,selectedPairs),60000);
+  const results=triangle
+    ? await withTimeout((async()=>{const out=[];for(const p of selectedPairs){
+        out.push(await withTimeout(scanTriangle(p,amount,maxGrossLossPct),22000).catch(e=>({
+          pair:p.symbol,ok:false,status:"QUOTE FAILURE",completeRoutes:0,validRoutes:0,
+          coreComplete:0,coreValid:0,quoteFailures:1})));
+      }return out;})(),85000)
+    : await withTimeout(scanPairsBatched(amount,maxGrossLossPct,selectedPairs),60000);
   const durationSec=(performance.now()-started)/1000;
   renderLeaderboard(results,amount,gas,slip,minNet);
   renderBest(results,amount,gas,slip,minNet,durationSec);
@@ -556,8 +602,8 @@ async function scan(){
 
 document.getElementById("scanMode").addEventListener("change",()=>{
  const isDiscovery=document.getElementById("scanMode").value==="discovery";
- setText("pairCount",isDiscovery?"3":"7");
- document.getElementById("log").textContent=isDiscovery?"Discovery selected: 3 experimental pairs with WETH bridge; core engine remains unchanged.":"Stable Core selected: original seven pairs.";
+ setText("pairCount",document.getElementById("scanMode").value==="core"?"7":"3");
+ document.getElementById("log").textContent=document.getElementById("scanMode").value==="triangle"?"Triangular discovery: 3 experimental tokens; 3 swaps per cycle; costs are assumptions.":isDiscovery?"Discovery selected: 3 experimental pairs with WETH bridge; core engine remains unchanged.":"Stable Core selected: original seven pairs.";
 });
 document.getElementById("scanBtn").addEventListener("click",scan);
 document.getElementById("resetPaper").addEventListener("click",()=>{writePaper([]);updatePaperUI();});
