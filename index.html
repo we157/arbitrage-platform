@@ -1,30 +1,88 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V5.5 CEX ↔ DEX ETH Diagnostic Test</title><style>body{margin:0;background:#081424;color:#edf5ff;font:16px system-ui}main{max-width:780px;margin:auto;padding:20px}section{background:#16263b;border:1px solid #38516b;border-radius:16px;padding:17px;margin:14px 0}h1{font-size:26px}h2{font-size:20px}label{display:block;margin:10px 0 5px}input{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:95%;font-size:16px}button{background:#20b987;color:#04101a;border:0;border-radius:10px;padding:15px;width:100%;font-weight:bold;font-size:17px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101e;padding:12px;border-radius:10px}p{line-height:1.5;color:#bed0df}.warn{color:#ffd07d}.good{color:#75e9b5}.bad{color:#ff8c9a}small{color:#bbcada}</style></head><body><main><h1>⚡ V5.5 — CEX ↔ DEX ETH Diagnostic Test</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Trade size (MYR)</label><input id="capital" type="number" value="100" min="1"><label>Estimated total extra costs (MYR: gas, swaps, bridging, rebalancing)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn">Zero extra costs is optimistic. DEX prices below are reference prices, NOT depth-tested executable swap quotes. The FX rate must be supplied and may differ from your conversion cost.</p><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V5.5 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Indicative comparison</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and may not represent a tradeable quote for the selected size.</small></section></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V5.6 CEX ↔ DEX ETH Fee & Depth Diagnostic</title><style>body{margin:0;background:#081424;color:#edf5ff;font:16px system-ui}main{max-width:780px;margin:auto;padding:20px}section{background:#16263b;border:1px solid #38516b;border-radius:16px;padding:17px;margin:14px 0}h1{font-size:26px}h2{font-size:20px}label{display:block;margin:10px 0 5px}select{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:100%;font-size:16px}input{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:95%;font-size:16px}button{background:#20b987;color:#04101a;border:0;border-radius:10px;padding:15px;width:100%;font-weight:bold;font-size:17px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101e;padding:12px;border-radius:10px}p{line-height:1.5;color:#bed0df}.warn{color:#ffd07d}.good{color:#75e9b5}.bad{color:#ff8c9a}small{color:#bbcada}</style></head><body><main><h1>⚡ V5.6 — CEX ↔ DEX ETH Fee & Depth Diagnostic</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Trade size (MYR)</label><select id="capital"><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select><label>Luno taker fee (%) — verify tier</label><input id="lunoFee" type="number" value="0.60" min="0" max="50" step="0.01"><label>HATA taker fee (%) — verify tier</label><input id="hataFee" type="number" value="0.40" min="0" max="50" step="0.01"><label>Assumed DEX swap fee (%) — not verified per pool</label><input id="dexFee" type="number" value="0.30" min="0" max="50" step="0.01"><label>Estimated gas + bridging + rebalancing + FX costs (MYR)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn"><strong>IMPORTANT:</strong> DEX prices are reference prices, not executable swap quotes. Fee-adjusted numbers are scenarios, NOT verified profits. Gas, slippage, bridging, inventory and actual FX costs may be higher. Zero extra costs is optimistic.</p><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V5.6 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Fee-adjusted indicative comparison (NOT executable)</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and do not represent a tradeable quote for the selected size. Fee estimates are assumptions, not actual swap fees or gas.</small></section></main><script>
 (function(){
-  var byId=function(id){return document.getElementById(id)};
-  var log=function(s){byId('activity').textContent=s};
+  var el=function(id){return document.getElementById(id)};
+  var say=function(t){el('activity').textContent=t};
   var relay='https://malaysia-cex-relay.weibalancing.workers.dev';
   var dex='https://api.dexscreener.com/token-pairs/v1/base/0x4200000000000000000000000000000000000006';
-  function number(v){var x=Number(v);return isFinite(x)?x:NaN}
-  function top(book,side){var arr=book[side];if(!Array.isArray(arr)||!arr.length)throw Error('Missing '+side);var rows=arr.map(function(v){return {p:number(Array.isArray(v)?v[0]:v.price),q:number(Array.isArray(v)?v[1]:(v.qty||v.volume))}}).filter(function(v){return v.p>0&&v.q>0}).sort(function(a,b){return side==='asks'?a.p-b.p:b.p-a.p});if(!rows.length)throw Error('No usable '+side);return rows[0]}
-  function get(url){var c=new AbortController(),t=setTimeout(function(){c.abort()},12000);return fetch(url,{signal:c.signal,cache:'no-store'}).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).finally(function(){clearTimeout(t)})}
-  var count=0;
+  var WETH='0x4200000000000000000000000000000000000006';
+  var USDC='0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+  var tries=0;
+  function val(v){var n=Number(v);return isFinite(n)?n:NaN}
+  function fmt(v,d){return Number(v).toFixed(d===undefined?4:d)}
+  function bookLevels(j,side){
+    if(!Array.isArray(j[side]))throw Error('Missing '+side);
+    return j[side].map(function(a){return {p:val(Array.isArray(a)?a[0]:a.price),q:val(Array.isArray(a)?a[1]:(a.qty||a.volume))}})
+      .filter(function(a){return a.p>0&&a.q>0}).sort(function(a,b){return side==='asks'?a.p-b.p:b.p-a.p}).slice(0,100);
+  }
+  function buyDepth(asks,budget,fee){
+    var left=budget/(1+fee),qty=0,spent=0;
+    asks.forEach(function(a){if(left<=0)return;var q=Math.min(a.q,left/a.p);qty+=q;spent+=q*a.p;left-=q*a.p});
+    return {qty:qty,spent:spent,filled:left<Math.max(0.0001,budget*0.00001)};
+  }
+  function sellDepth(bids,qty){
+    var left=qty,gross=0;
+    bids.forEach(function(a){if(left<=0)return;var q=Math.min(a.q,left);gross+=q*a.p;left-=q});
+    return {gross:gross,filled:left<Math.max(1e-10,qty*1e-7)};
+  }
+  function get(url){
+    var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},12000);
+    return fetch(url,{signal:ctl.signal,cache:'no-store'}).then(function(r){if(!r.ok)throw Error('HTTP '+r.status);return r.json()}).finally(function(){clearTimeout(timer)});
+  }
+  function cost(name,fees){return name==='Luno'?fees.luno:fees.hata}
   window.runScan=function(){
-    count++;log('LIVE TAP '+count+' received — validating…');
-    var fx=number(byId('fx').value),capital=number(byId('capital').value),extra=number(byId('extra').value);
-    if(!(fx>0&&capital>0&&extra>=0)){log('Enter valid FX, capital and nonnegative extra costs.');return}
-    byId('go').disabled=true;log('Fetching live data…');byId('conn').textContent='Checking Luno, HATA and Base DEX…';byId('out').textContent='Waiting…';
-    var req=[['Luno',relay+'/book?exchange=luno&asset=ETH'],['HATA',relay+'/book?exchange=hata&asset=ETH'],['Base DEX reference',dex]];
-    Promise.all(req.map(function(x){return get(x[1]).then(function(v){return {ok:true,data:v}},function(e){return {ok:false,error:String(e.message||e)}})})).then(function(results){
-      var lines=[],cex=[],dexes=[];
-      results.forEach(function(r,i){var name=req[i][0];if(!r.ok){lines.push(name+': UNAVAILABLE — '+r.error);return}try{var j=r.data;if(i<2){if(j.error)throw Error(String(j.error));if(j.asset!=='ETH')throw Error('Unexpected asset');var ask=top(j,'asks'),bid=top(j,'bids');var age=Date.now()-Date.parse(j.fetchedAt);if(!isFinite(age)||age>30000||age< -60000)throw Error('Stale or invalid timestamp');cex.push({name:name,ask:ask,bid:bid});lines.push(name+': CONNECTED; ask RM'+ask.p.toFixed(2)+'; bid RM'+bid.p.toFixed(2))}else{var all=Array.isArray(j)?j:(j.pairs||[]);var base=all.filter(function(p){return p.chainId==='base'});var weth='0x4200000000000000000000000000000000000006';var usdc='0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';var exact=base.filter(function(p){var a=String(p.baseToken&&p.baseToken.address||'').toLowerCase(),b=String(p.quoteToken&&p.quoteToken.address||'').toLowerCase();return a===weth&&b===usdc});dexes=exact.filter(function(p){return number(p.priceUsd)>0&&number(p.liquidity&&p.liquidity.usd)>0}).sort(function(a,b){return number(b.liquidity&&b.liquidity.usd)-number(a.liquidity&&a.liquidity.usd)}).slice(0,5);lines.push('Base DEX: API '+all.length+' pools; Base '+base.length+'; WETH-base/USDC-quote '+exact.length+'; usable '+dexes.length);if(!dexes.length){lines.push('DEX diagnostics: sample '+base.slice(0,3).map(function(p){return String(p.dexId)+': '+String(p.baseToken&&p.baseToken.symbol)+'/'+String(p.quoteToken&&p.quoteToken.symbol)}).join(', '))}}}catch(e){lines.push(name+': INVALID — '+e.message)}});
-      byId('conn').textContent=lines.join('\n');
-      if(!cex.length||!dexes.length){byId('out').textContent='Cannot compare: missing valid CEX or DEX data. No estimated opportunity.';return}
-      var p=dexes[0],usd=number(p.priceUsd),myr=usd*fx;
-      var out=['DEX reference: '+p.dexId+' | '+p.pairAddress,'WETH reference price: $'+usd.toFixed(4)+' ≈ RM'+myr.toFixed(2),''];
-      cex.forEach(function(c){out.push(c.name+' → DEX: indicative gross '+((myr/c.ask.p-1)*100).toFixed(3)+'% before fees');out.push('DEX → '+c.name+': indicative gross '+((c.bid.p/myr-1)*100).toFixed(3)+'% before fees')});
-      out.push('','NOT EXECUTABLE / PROFIT NOT VERIFIED','Missing executable swap quote, gas, fees, actual FX, network compatibility and rebalancing.','Capital RM'+capital.toFixed(2)+'; extra RM'+extra.toFixed(2));byId('out').textContent=out.join('\n');
-    }).catch(function(e){byId('conn').textContent='SCAN ERROR: '+String(e.stack||e);byId('out').textContent='No comparison.'}).finally(function(){byId('go').disabled=false;log('Scan attempt finished. Check Connections.')});
+    tries++;say('LIVE TAP '+tries+' — validating inputs');
+    var fx=val(el('fx').value),budget=val(el('capital').value),extra=val(el('extra').value);
+    var fees={luno:val(el('lunoFee').value)/100,hata:val(el('hataFee').value)/100,dex:val(el('dexFee').value)/100};
+    if(!(fx>0&&budget>0&&extra>=0&&fees.luno>=0&&fees.hata>=0&&fees.dex>=0&&fees.luno<1&&fees.hata<1&&fees.dex<1)){
+      say('Invalid input. Enter verified MYR/USD and nonnegative fees/costs.');return;
+    }
+    el('go').disabled=true;say('Fetching public CEX books and DEX reference prices…');
+    el('conn').textContent='Checking three sources…';el('out').textContent='Waiting for data…';
+    var req=[['Luno',relay+'/book?exchange=luno&asset=ETH'],['HATA',relay+'/book?exchange=hata&asset=ETH'],['Base DEX',dex]];
+    Promise.all(req.map(function(a){return get(a[1]).then(function(j){return {ok:true,j:j}},function(e){return {ok:false,error:String(e.message||e)}})}))
+    .then(function(results){
+      var lines=[],cex=[],pools=[];
+      results.forEach(function(r,i){var name=req[i][0];if(!r.ok){lines.push(name+': UNAVAILABLE — '+r.error);return}
+        try{var j=r.j;
+          if(i<2){if(j.error)throw Error(String(j.error));if(j.asset!=='ETH')throw Error('Unexpected asset');
+            var age=Date.now()-Date.parse(j.fetchedAt);if(!isFinite(age)||age>30000||age< -60000)throw Error('Stale timestamp');
+            var asks=bookLevels(j,'asks'),bids=bookLevels(j,'bids');if(!asks.length||!bids.length)throw Error('Empty book');
+            cex.push({name:name,asks:asks,bids:bids});lines.push(name+': CONNECTED; ask RM'+fmt(asks[0].p,2)+'; bid RM'+fmt(bids[0].p,2)+'; levels '+asks.length+'/'+bids.length);
+          }else{
+            var all=Array.isArray(j)?j:(j.pairs||[]),base=all.filter(function(p){return p.chainId==='base'});
+            var exact=base.filter(function(p){return String(p.baseToken&&p.baseToken.address||'').toLowerCase()===WETH&&String(p.quoteToken&&p.quoteToken.address||'').toLowerCase()===USDC});
+            pools=exact.filter(function(p){return val(p.priceUsd)>0&&val(p.liquidity&&p.liquidity.usd)>0})
+              .sort(function(a,b){return val(b.liquidity.usd)-val(a.liquidity.usd)}).slice(0,5);
+            lines.push('Base DEX: API '+all.length+'; Base '+base.length+'; exact WETH/USDC '+exact.length+'; usable '+pools.length);
+            pools.forEach(function(p){lines.push('  '+p.dexId+' | '+p.pairAddress+' | liquidity $'+fmt(p.liquidity.usd,0))});
+          }
+        }catch(e){lines.push(name+': INVALID — '+e.message)}
+      });
+      el('conn').textContent=lines.join('\n');
+      if(!cex.length||!pools.length){el('out').textContent='No comparison: missing valid CEX book or DEX reference. No profit verified.';return}
+      var resultsOut=[];
+      pools.forEach(function(p){var dexMYR=val(p.priceUsd)*fx;if(!(dexMYR>0))return;
+        cex.forEach(function(c){var f=cost(c.name,fees),buy=buyDepth(c.asks,budget,f);
+          if(buy.filled){
+            var dexGross=buy.qty*dexMYR,net=dexGross*(1-fees.dex)-budget-extra;
+            resultsOut.push({route:c.name+' → '+p.dexId+' DEX',pool:p.pairAddress,net:net,gross:dexGross-buy.spent,fees:'CEX '+fmt(budget-buy.spent,4)+'; assumed DEX '+fmt(dexGross*fees.dex,4),qty:buy.qty,depth:'CEX ask covered',dexPrice:dexMYR});
+          }
+          // For DEX -> CEX, assume a reference-price DEX purchase including an assumed swap fee.
+          var qty=budget/(dexMYR*(1+fees.dex)),sell=sellDepth(c.bids,qty);
+          if(sell.filled){var net2=sell.gross*(1-f)-budget-extra;
+            resultsOut.push({route:p.dexId+' DEX → '+c.name,pool:p.pairAddress,net:net2,gross:sell.gross-qty*dexMYR,fees:'Assumed DEX '+fmt(budget-qty*dexMYR,4)+'; CEX '+fmt(sell.gross*f,4),qty:qty,depth:'CEX bid covered',dexPrice:dexMYR});
+          }
+        });
+      });
+      resultsOut.sort(function(a,b){return b.net-a.net});
+      var out=['CAPITAL RM'+fmt(budget,2)+' | FX '+fmt(fx,4)+' MYR/USD','All DEX legs use REFERENCE prices; NOT size-specific executable swap quotes.','Assumed DEX fee '+fmt(fees.dex*100,2)+'%; extra costs RM'+fmt(extra,2),''];
+      resultsOut.forEach(function(x,i){out.push((i+1)+'. '+x.route+' | RM'+fmt(x.net,4)+' hypothetical net'+(x.net>0?' [UNVERIFIED]':''));out.push('   Pool '+x.pool+' | reference RM'+fmt(x.dexPrice,2)+' / WETH');out.push('   Gross price P/L RM'+fmt(x.gross,4)+' | '+x.fees+' | '+x.depth)});
+      if(!resultsOut.length)out.push('No CEX depth-covered comparison at this size.');
+      out.push('','IMPORTANT: 0 verified profitable opportunities. Even positive hypothetical net is NOT executable.','Missing: live DEX amount-specific quote, swap slippage, actual pool fee, gas, conversion, deposit network and rebalancing.');
+      el('out').textContent=out.join('\n');
+    }).catch(function(e){el('conn').textContent='SCAN ERROR: '+String(e.message||e);el('out').textContent='No verified result.'})
+    .finally(function(){el('go').disabled=false;say('Scan finished — review Connections and hypothetical comparisons.')});
   };
-  log('V5.5 MAIN SCRIPT INITIALIZED — runScan available.');
+  say('V5.6 MAIN SCRIPT INITIALIZED — runScan available.');
 })();
 </script></body></html>
