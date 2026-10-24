@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V5.7 CEX ↔ DEX ETH Quote Verification Diagnostic</title><style>body{margin:0;background:#081424;color:#edf5ff;font:16px system-ui}main{max-width:780px;margin:auto;padding:20px}section{background:#16263b;border:1px solid #38516b;border-radius:16px;padding:17px;margin:14px 0}h1{font-size:26px}h2{font-size:20px}label{display:block;margin:10px 0 5px}select{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:100%;font-size:16px}input{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:95%;font-size:16px}button{background:#20b987;color:#04101a;border:0;border-radius:10px;padding:15px;width:100%;font-weight:bold;font-size:17px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101e;padding:12px;border-radius:10px}p{line-height:1.5;color:#bed0df}.warn{color:#ffd07d}.good{color:#75e9b5}.bad{color:#ff8c9a}small{color:#bbcada}</style></head><body><main><h1>⚡ V5.7 — CEX ↔ DEX ETH Quote Verification Diagnostic</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Trade size (MYR)</label><select id="capital"><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select><label>Luno taker fee (%) — verify tier</label><input id="lunoFee" type="number" value="0.60" min="0" max="50" step="0.01"><label>HATA taker fee (%) — verify tier</label><input id="hataFee" type="number" value="0.40" min="0" max="50" step="0.01"><label>Assumed DEX swap fee (%) — not verified per pool</label><input id="dexFee" type="number" value="0.30" min="0" max="50" step="0.01"><label>Estimated gas + bridging + rebalancing + FX costs (MYR)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn"><strong>IMPORTANT:</strong> DEX prices are reference prices, not executable swap quotes. Fee-adjusted numbers are scenarios, NOT verified profits. Gas, slippage, bridging, inventory and actual FX costs may be higher. Zero extra costs is optimistic.</p><section style="border-color:#c69539"><h2>V5.7 — Amount-specific DEX quote verification</h2><p>Optional: paste an actual swap quote from a Base DEX for the <b>same trade size</b>. Enter the quoted WETH received for spending USDC (DEX → CEX). This is not an automatic quote integration. Without a quote, results remain indicative.</p><label>DEX quote: USDC spent (exact amount)</label><input id="qUsdc" type="number" min="0" step="any" placeholder="e.g. 24.45"><label>DEX quote: WETH received (after DEX swap fees)</label><input id="qWeth" type="number" min="0" step="any" placeholder="e.g. 0.0105"><label>Quoted gas cost (MYR)</label><input id="qGas" type="number" min="0" step="any" placeholder="Required for quote check"><label>Additional FX / rebalancing / transfer costs (MYR)</label><input id="qRebal" type="number" min="0" step="any" placeholder="Required for quote check"><p style="color:#f3ca85">Use a fresh, amount-specific quote from the same Base swap route. This verifies the quote arithmetic only; inventory, timing, settlement, transfer compatibility and actual fills remain unverified.</p></section><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V5.7 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Fee-adjusted indicative comparison + quote check (NOT executable)</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and do not represent a tradeable quote for the selected size. Fee estimates are assumptions, not actual swap fees or gas.</small></section></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>V5.8 CEX ↔ DEX ETH Quote Verification Diagnostic</title><style>body{margin:0;background:#081424;color:#edf5ff;font:16px system-ui}main{max-width:780px;margin:auto;padding:20px}section{background:#16263b;border:1px solid #38516b;border-radius:16px;padding:17px;margin:14px 0}h1{font-size:26px}h2{font-size:20px}label{display:block;margin:10px 0 5px}select{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:100%;font-size:16px}input{background:#081424;color:white;border:1px solid #789;border-radius:9px;padding:11px;width:95%;font-size:16px}button{background:#20b987;color:#04101a;border:0;border-radius:10px;padding:15px;width:100%;font-weight:bold;font-size:17px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#07101e;padding:12px;border-radius:10px}p{line-height:1.5;color:#bed0df}.warn{color:#ffd07d}.good{color:#75e9b5}.bad{color:#ff8c9a}small{color:#bbcada}</style></head><body><main><h1>⚡ V5.8 — CEX ↔ DEX ETH Quote Verification Diagnostic</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Trade size (MYR)</label><select id="capital"><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select><label>Luno taker fee (%) — verify tier</label><input id="lunoFee" type="number" value="0.60" min="0" max="50" step="0.01"><label>HATA taker fee (%) — verify tier</label><input id="hataFee" type="number" value="0.40" min="0" max="50" step="0.01"><label>Assumed DEX swap fee (%) — not verified per pool</label><input id="dexFee" type="number" value="0.30" min="0" max="50" step="0.01"><label>Estimated gas + bridging + rebalancing + FX costs (MYR)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn"><strong>IMPORTANT:</strong> DEX prices are reference prices, not executable swap quotes. Fee-adjusted numbers are scenarios, NOT verified profits. Gas, slippage, bridging, inventory and actual FX costs may be higher. Zero extra costs is optimistic.</p><section style="border-color:#c69539"><h2>V5.8 — Automatic on-chain DEX quote</h2><p>On every scan, request live <b>USDC → WETH</b> quotes from the Uniswap V3 QuoterV2 contract on Base for your selected MYR amount. Tries the 0.01%, 0.05%, 0.30%, and 1.00% pool fee tiers. No wallet or keys required.</p><p class="warn">Quotes are on-chain simulations, not guaranteed fills. This test covers <b>Uniswap V3 only</b>, not Aerodrome or every pool displayed in the reference-price section. Gas, FX, funding, transfers and settlement remain unverified.</p><label>Estimated gas cost in MYR (required for net scenario)</label><input id="qGas" type="number" min="0" step="any" placeholder="Enter realistic gas cost; 0 is optimistic"><label>Additional FX / transfer / rebalancing cost (MYR; required)</label><input id="qRebal" type="number" min="0" step="any" placeholder="Enter estimated extra costs; 0 is optimistic"><pre id="autoQuote" aria-live="polite">Automatic quote not requested yet.</pre></section></section><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V5.8 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Fee-adjusted indicative comparison + quote check (NOT executable)</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and do not represent a tradeable quote for the selected size. Fee estimates are assumptions, not actual swap fees or gas.</small></section></main><script>
 (function(){
   var el=function(id){return document.getElementById(id)};
   var say=function(t){el('activity').textContent=t};
@@ -37,6 +37,7 @@
       say('Invalid input. Enter verified MYR/USD and nonnegative fees/costs.');return;
     }
     el('go').disabled=true;say('Fetching public CEX books and DEX reference prices…');
+    el('autoQuote').textContent='Requesting Base on-chain Uniswap V3 quote…';
     el('conn').textContent='Checking three sources…';el('out').textContent='Waiting for data…';
     var req=[['Luno',relay+'/book?exchange=luno&asset=ETH'],['HATA',relay+'/book?exchange=hata&asset=ETH'],['Base DEX',dex]];
     Promise.all(req.map(function(a){return get(a[1]).then(function(j){return {ok:true,j:j}},function(e){return {ok:false,error:String(e.message||e)}})}))
@@ -59,6 +60,7 @@
         }catch(e){lines.push(name+': INVALID — '+e.message)}
       });
       el('conn').textContent=lines.join('\n');
+      autoOnchainQuote(cex,fx,budget,extra,fees);
       if(!cex.length||!pools.length){el('out').textContent='No comparison: missing valid CEX book or DEX reference. No profit verified.';return}
       var resultsOut=[];
       pools.forEach(function(p){var dexMYR=val(p.priceUsd)*fx;if(!(dexMYR>0))return;
@@ -79,28 +81,64 @@
       resultsOut.forEach(function(x,i){out.push((i+1)+'. '+x.route+' | RM'+fmt(x.net,4)+' hypothetical net'+(x.net>0?' [UNVERIFIED]':''));out.push('   Pool '+x.pool+' | reference RM'+fmt(x.dexPrice,2)+' / WETH');out.push('   Gross price P/L RM'+fmt(x.gross,4)+' | '+x.fees+' | '+x.depth)});
       if(!resultsOut.length)out.push('No CEX depth-covered comparison at this size.');
       out.push('','IMPORTANT: 0 verified profitable opportunities. Even positive hypothetical net is NOT executable.','Missing: live DEX amount-specific quote, swap slippage, actual pool fee, gas, conversion, deposit network and rebalancing.');
-      var qu=el('qUsdc').value.trim(),qw=el('qWeth').value.trim(),qg=el('qGas').value.trim(),qr=el('qRebal').value.trim();
-      if(qu||qw||qg||qr){
-        out.push('','--- V5.7 AMOUNT-SPECIFIC QUOTE CHECK (DEX → CEX) ---');
-        var spent=Number(qu),received=Number(qw),gas=Number(qg),reb=Number(qr);
-        if(!qu||!qw||!qg||!qr||!(spent>0&&received>0&&gas>=0&&reb>=0)){
-          out.push('INCOMPLETE: Enter USDC spent, WETH received, gas and rebalancing costs. No quote-based result.');
-        }else{
-          var myrCost=spent*fx;
-          if(Math.abs(myrCost-budget)>Math.max(0.5,budget*0.02))out.push('WARNING: quote spend RM'+fmt(myrCost,2)+' differs from selected capital RM'+fmt(budget,2)+'.');
-          var qres=[];
-          cex.forEach(function(c){var sale=sellDepth(c.bids,received);if(!sale.filled){qres.push(c.name+': insufficient CEX bid depth for quoted WETH amount');return}
-            var fee=sale.gross*cost(c.name,fees),net=sale.gross-fee-myrCost-gas-reb-extra;
-            qres.push(c.name+': quote-based arithmetic RM'+fmt(net,4)+' (gross proceeds RM'+fmt(sale.gross,4)+'; CEX fee RM'+fmt(fee,4)+'; swap input RM'+fmt(myrCost,4)+'; gas RM'+fmt(gas,4)+'; rebalance RM'+fmt(reb,4)+'; other RM'+fmt(extra,4)+') [NOT VERIFIED EXECUTABLE]');
-          });
-          out.push.apply(out,qres);
-          out.push('No automatic quote authenticity, expiry, token address, transfer compatibility or synchronized fills verified.');
-        }
-      }else out.push('','V5.7 quote verification: NO AMOUNT-SPECIFIC QUOTE SUPPLIED. Indicative results only.');
+      out.push('','V5.8 automatic Uniswap V3 quote results appear in the separate box above. Reference-price rankings remain hypothetical.');
       el('out').textContent=out.join('\n');
     }).catch(function(e){el('conn').textContent='SCAN ERROR: '+String(e.message||e);el('out').textContent='No verified result.'})
     .finally(function(){el('go').disabled=false;say('Scan finished — review Connections and hypothetical comparisons.')});
   };
-  say('V5.7 MAIN SCRIPT INITIALIZED — runScan available.');
+
+  // Public, read-only on-chain quote. QuoterV2 quoteExactInputSingle((address,address,uint256,uint24,uint160))
+  var RPC='https://mainnet.base.org';
+  var QUOTER='0x3d4e44Eb1374240CE5F1B871ab261CD16335B76a';
+  function word(x){return BigInt(x).toString(16).padStart(64,'0')}
+  function addrWord(a){return a.toLowerCase().slice(2).padStart(64,'0')}
+  function callData(amount,fee){return '0xc6a5026a'+addrWord(USDC)+addrWord(WETH)+word(amount)+word(fee)+word(0)}
+  async function rpcQuote(amount,fee){
+    var ctl=new AbortController(),timer=setTimeout(function(){ctl.abort()},9000);
+    try{
+      var res=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:'eth_call',params:[{to:QUOTER,data:callData(amount,fee)},'latest']}),signal:ctl.signal});
+      if(!res.ok)throw Error('RPC HTTP '+res.status);
+      var j=await res.json();if(j.error)throw Error(j.error.message||JSON.stringify(j.error));
+      if(!/^0x[0-9a-f]{256,}$/i.test(j.result||''))throw Error('Unexpected QuoterV2 response');
+      var hex=j.result.slice(2),out=BigInt('0x'+hex.slice(0,64)),gas=BigInt('0x'+hex.slice(192,256));
+      if(out<=0n)throw Error('Zero WETH quoted');
+      return {fee:fee,amount:out,gas:gas};
+    }finally{clearTimeout(timer)}
+  }
+  async function autoOnchainQuote(cex,fx,budget,extra,fees){
+    var box=el('autoQuote');
+    var usdcUnits=Math.floor((budget/fx)*1e6);
+    if(!(usdcUnits>0)){box.textContent='Invalid MYR/USD conversion or quote size.';return}
+    var tiers=[100,500,3000,10000],logs=[],quotes=[];
+    box.textContent='Contacting Base RPC for '+(usdcUnits/1e6).toFixed(6)+' USDC → WETH (4 fee tiers)…';
+    for(var i=0;i<tiers.length;i++){
+      try{var q=await rpcQuote(usdcUnits,tiers[i]);quotes.push(q);logs.push((tiers[i]/10000).toFixed(2)+'% pool: '+(Number(q.amount)/1e18).toFixed(9)+' WETH');}
+      catch(e){logs.push((tiers[i]/10000).toFixed(2)+'% pool: unavailable ('+String(e.message||e).slice(0,110)+')')}
+    }
+    if(!quotes.length){box.textContent='NO ON-CHAIN QUOTE AVAILABLE.\n'+logs.join('\n')+'\nRPC may be blocked, rate-limited, or pools unavailable. No quote-based profit calculated.';return}
+    quotes.sort(function(a,b){return a.amount>b.amount?-1:a.amount<b.amount?1:0});
+    var best=quotes[0],received=Number(best.amount)/1e18,spent=usdcUnits/1e6,gasInput=el('qGas').value.trim(),rebInput=el('qRebal').value.trim();
+    var lines=['UNISWAP V3 ON-CHAIN QUOTER V2 — BASE','Quote time: '+new Date().toLocaleString(),
+      'USDC input: '+spent.toFixed(6)+' (~RM'+(spent*fx).toFixed(2)+')',
+      'Best quoted WETH output: '+received.toFixed(9),
+      'Best pool fee: '+(best.fee/10000).toFixed(2)+'% (already reflected in WETH output)',
+      'Quoter gas estimate: '+best.gas.toString()+' gas units (NOT full transaction gas cost)',
+      '', 'Tier diagnostics:',...logs,''];
+    if(gasInput===''||rebInput===''||!isFinite(Number(gasInput))||!isFinite(Number(rebInput))||Number(gasInput)<0||Number(rebInput)<0){
+      lines.push('QUOTE RETRIEVED. Enter gas and additional transfer/FX/rebalancing cost above, then rescan to calculate net scenarios.');
+    }else{
+      var gas=Number(gasInput),reb=Number(rebInput);
+      if(!cex.length)lines.push('No CEX order books available: cannot compare quote.');
+      cex.forEach(function(c){var sale=sellDepth(c.bids,received);if(!sale.filled){lines.push(c.name+': insufficient CEX bid depth');return}
+        var f=cost(c.name,fees),cexFee=sale.gross*f,net=sale.gross-cexFee-spent*fx-gas-reb-extra;
+        lines.push('Uniswap V3 → '+c.name+': '+(net>=0?'+':'')+'RM'+net.toFixed(4)+' quote-based scenario [UNVERIFIED]');
+        lines.push('  CEX gross RM'+sale.gross.toFixed(4)+' | CEX fee RM'+cexFee.toFixed(4)+' | USDC cost RM'+(spent*fx).toFixed(4)+' | gas RM'+gas.toFixed(2)+' | transfer/FX RM'+reb.toFixed(2)+' | other RM'+extra.toFixed(2));
+      });
+    }
+    lines.push('No actual gas quote, swap transaction, FX conversion, transfer path, or synchronized execution verified. No orders placed.');
+    box.textContent=lines.join('\n');
+  }
+
+  say('V5.8 MAIN SCRIPT INITIALIZED — runScan available.');
 })();
 </script></body></html>
