@@ -5,16 +5,16 @@
 .v61money{font-size:20px;font-weight:800}
 .v61tag{font-size:12px;color:#ffd07d}
 @media(max-width:600px){main{padding:12px}section{padding:13px}h1{font-size:23px}}
-</style></head><body><main><h1>⚡ V6.1 — Expanded Exchange Scanner</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Asset to investigate</label><select id="asset"><option value="ETH">ETH — live Uniswap V3 quote</option><option value="BTC">BTC — Base cbBTC route discovery only</option><option value="SOL">SOL — route discovery only</option></select><p class="warn">BTC on a CEX and cbBTC on Base are not interchangeable without a verified conversion/redemption and supported transfer route. SOL has no configured verified Base token route. Only ETH currently supports automatic executable-size quotes.</p><label>Trade size (MYR)</label><select id="capital"><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select><label>Luno taker fee (%) — verify tier</label><input id="lunoFee" type="number" value="0.60" min="0" max="50" step="0.01"><label>HATA taker fee (%) — verify tier</label><input id="hataFee" type="number" value="0.40" min="0" max="50" step="0.01"><label>Assumed DEX swap fee (%) — not verified per pool</label><input id="dexFee" type="number" value="0.30" min="0" max="50" step="0.01"><label>Estimated gas + bridging + rebalancing + FX costs (MYR)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn"><strong>IMPORTANT:</strong> DEX prices are reference prices, not executable swap quotes. Fee-adjusted numbers are scenarios, NOT verified profits. Gas, slippage, bridging, inventory and actual FX costs may be higher. Zero extra costs is optimistic.</p><section style="border-color:#c69539"><h2>V5.9 — Automatic on-chain DEX quote</h2><p>For ETH, request live <b>USDC → WETH</b> quotes from the Uniswap V3 QuoterV2 contract on Base for your selected MYR amount. Tries the 0.01%, 0.05%, 0.30%, and 1.00% pool fee tiers. No wallet or keys required.</p><p class="warn">Quotes are on-chain simulations, not guaranteed fills. This test covers <b>Uniswap V3 only</b>, not Aerodrome or every pool displayed in the reference-price section. Gas, FX, funding, transfers and settlement remain unverified.</p><label>Estimated gas cost in MYR (required for net scenario)</label><input id="qGas" type="number" min="0" step="any" placeholder="Enter realistic gas cost; 0 is optimistic"><label>Additional FX / transfer / rebalancing cost (MYR; required)</label><input id="qRebal" type="number" min="0" step="any" placeholder="Enter estimated extra costs; 0 is optimistic"><pre id="autoQuote" aria-live="polite">Automatic quote not requested yet.</pre></section></section><section id="v6dashboard"><h2>V6.1 — Expanded CEX Scan</h2>
-<p>BTC, ETH, SOL and XRP × RM100–RM500 across Luno, HATA and MX Global. MX Global is <b>tested only</b>: unsupported relay connectors are reported as unavailable, never treated as successful quotes.</p>
-<label>MX Global taker fee (%) — provisional; verify your tier</label><input id="mxFee" type="number" value="0.60" min="0" max="50" step="0.01">
-<label>Minimum estimated net profit to display (MYR)</label><input id="minProfit" type="number" value="0" step="0.01">
+</style></head><body><main><h1>⚡ V6.2 — Connection Diagnostics + Filter Fix</h1><p>Read-only connectivity and indicative price comparison. <strong>Not an executable arbitrage scanner.</strong> No simulated live prices, account keys or orders.</p><section><h2>Test inputs</h2><label>MYR per USD (enter current verified rate manually)</label><input id="fx" type="number" min="0.01" step="0.0001" placeholder="Required — no default"><label>Asset to investigate</label><select id="asset"><option value="ETH">ETH — live Uniswap V3 quote</option><option value="BTC">BTC — Base cbBTC route discovery only</option><option value="SOL">SOL — route discovery only</option></select><p class="warn">BTC on a CEX and cbBTC on Base are not interchangeable without a verified conversion/redemption and supported transfer route. SOL has no configured verified Base token route. Only ETH currently supports automatic executable-size quotes.</p><label>Trade size (MYR)</label><select id="capital"><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select><label>Luno taker fee (%) — verify tier</label><input id="lunoFee" type="number" value="0.60" min="0" max="50" step="0.01"><label>HATA taker fee (%) — verify tier</label><input id="hataFee" type="number" value="0.40" min="0" max="50" step="0.01"><label>Assumed DEX swap fee (%) — not verified per pool</label><input id="dexFee" type="number" value="0.30" min="0" max="50" step="0.01"><label>Estimated gas + bridging + rebalancing + FX costs (MYR)</label><input id="extra" type="number" value="0" min="0" step="0.01"><p class="warn"><strong>IMPORTANT:</strong> DEX prices are reference prices, not executable swap quotes. Fee-adjusted numbers are scenarios, NOT verified profits. Gas, slippage, bridging, inventory and actual FX costs may be higher. Zero extra costs is optimistic.</p><section style="border-color:#c69539"><h2>V5.9 — Automatic on-chain DEX quote</h2><p>For ETH, request live <b>USDC → WETH</b> quotes from the Uniswap V3 QuoterV2 contract on Base for your selected MYR amount. Tries the 0.01%, 0.05%, 0.30%, and 1.00% pool fee tiers. No wallet or keys required.</p><p class="warn">Quotes are on-chain simulations, not guaranteed fills. This test covers <b>Uniswap V3 only</b>, not Aerodrome or every pool displayed in the reference-price section. Gas, FX, funding, transfers and settlement remain unverified.</p><label>Estimated gas cost in MYR (required for net scenario)</label><input id="qGas" type="number" min="0" step="any" placeholder="Enter realistic gas cost; 0 is optimistic"><label>Additional FX / transfer / rebalancing cost (MYR; required)</label><input id="qRebal" type="number" min="0" step="any" placeholder="Enter estimated extra costs; 0 is optimistic"><pre id="autoQuote" aria-live="polite">Automatic quote not requested yet.</pre></section></section><section id="v6dashboard"><h2>V6.2 — Exchange Connectivity & Profitability</h2>
+<p>BTC, ETH, SOL and XRP × RM100–RM500 across Luno, HATA and MX Global. MX Global requires a working relay connector. HTTP 400 is reported as unsupported; this page cannot repair the Cloudflare Worker itself.</p>
+<label><input id="mxEnabled" type="checkbox"> Test MX Global connector (currently HTTP 400; disabled by default)</label><label>MX Global taker fee (%) — provisional; verify your tier</label><input id="mxFee" type="number" value="0.60" min="0" max="50" step="0.01">
+<label>Minimum estimated net profit for positive-only filter (MYR)</label><input id="minProfit" type="number" value="0" step="0.01">
 <label>Results</label><select id="v61filter"><option value="all">Show all estimates</option><option value="positive">Positive estimated net only</option></select>
-<button id="v6go" type="button">SCAN 4 ASSETS × 5 SIZES × 3 EXCHANGES</button>
+<button id="v6go" type="button">SCAN 4 ASSETS × 5 SIZES (AVAILABLE EXCHANGES)</button>
 <p id="v6status" aria-live="polite">Ready — available exchange pairs will be checked.</p>
-<div id="v61cards" aria-live="polite"><p>Tap SCAN to begin.</p></div>
+<div id="v62connections" class="v61card" aria-live="polite">Connection status appears after scan.</div><div id="v61cards" aria-live="polite"><p>Tap SCAN to begin.</p></div>
 <p class="warn">Profit and break-even spreads are estimates using the entered taker fees and order-book depth. Additional costs are entered above. MX and XRP availability must be confirmed by the relay. No trades or transfers occur.</p>
-</section><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V6.1 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Fee-adjusted indicative comparison + quote check (NOT executable)</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and do not represent a tradeable quote for the selected size. Fee estimates are assumptions, not actual swap fees or gas.</small></section></main><script>
+</section><button id="go" type="button" onclick="document.getElementById('activity').textContent='LIVE BUTTON TAPPED at '+new Date().toLocaleTimeString()+' — checking scanner function…';document.getElementById('conn').textContent='Tap received; checking JavaScript initialization…';if(typeof window.runScan==='function'){try{window.runScan(event)}catch(e){document.getElementById('activity').textContent='LIVE FUNCTION ERROR: '+String(e.message||e)}}else{document.getElementById('activity').textContent='LIVE BUTTON WORKS, but runScan is missing. Main script failed to initialize.';document.getElementById('conn').textContent='JavaScript initialization failure; not an API failure.'}">TEST LIVE PUBLIC DATA</button><button type="button" style="margin-top:10px;background:#456a92;color:white" onclick="document.getElementById('activity').textContent='TAP TEST OK — inline button responding at '+new Date().toLocaleTimeString()">TEST BUTTON ONLY (NO NETWORK)</button><pre id="activity" role="status" aria-live="polite">V6.2 loaded. Test the live button.</pre></section><section><h2>Connections</h2><pre id="conn">Not tested</pre></section><section><h2>Fee-adjusted indicative comparison + quote check (NOT executable)</h2><pre id="out">Run a test. No profit claims will be made.</pre></section><section><h2>Required before actual arbitrage</h2><p>Verify the DEX's token contract, quote size, routing, gas, price impact, supported CEX deposit/withdrawal networks, inventory funding, minimum trades and full rebalancing path. ETH on Base is not automatically transferable to a CEX ETH deposit address on a different network.</p><small>Sources: public Luno/HATA relay; DexScreener Base WETH token-pair endpoint. DexScreener prices are indicative and do not represent a tradeable quote for the selected size. Fee estimates are assumptions, not actual swap fees or gas.</small></section></main><script>
 (function(){
   var el=function(id){return document.getElementById(id)};
   var say=function(t){el('activity').textContent=t};
@@ -191,7 +191,7 @@
     var holder=el('v61cards'),filter=el('v61filter').value,threshold=Number(el('minProfit').value);
     if(!Number.isFinite(threshold)){holder.textContent='Enter a valid minimum profit.';return}
     holder.textContent='';
-    var shown=v61results.filter(function(r){return r.net!==null&&(filter!=='positive'||r.net>0)&&r.net>=threshold});
+    var shown=v61results.filter(function(r){return r.net!==null&&(filter==='all'||(r.net>0&&r.net>=threshold))});
     if(!shown.length){holder.textContent='No estimates meet this filter. This does not imply profitable trades exist.';return}
     shown.forEach(function(r){
       var card=document.createElement('article');card.className='v61card';
@@ -215,8 +215,9 @@
     }
     btn.disabled=true;v61results=[];el('v61cards').textContent='Checking public books…';
     var assets=['BTC','ETH','SOL','XRP'],sizes=[100,200,300,400,500];
-    var exchanges=[{name:'Luno',id:'luno'},{name:'HATA',id:'hata'},{name:'MX Global',id:'mxglobal'}];
-    var books={},notes=[];
+    var exchanges=[{name:'Luno',id:'luno'},{name:'HATA',id:'hata'}];
+    if(el('mxEnabled').checked)exchanges.push({name:'MX Global',id:'mxglobal'});
+    var books={},notes=[],connectionRows=[];
     try{
       await Promise.all(assets.flatMap(function(asset){return exchanges.map(async function(ex){
         try{
@@ -228,7 +229,8 @@
           var asks=bookLevels(j,'asks'),bids=bookLevels(j,'bids');
           if(!asks.length||!bids.length)throw Error('Empty order book');
           books[asset+'|'+ex.name]={asks:asks,bids:bids};
-        }catch(e){notes.push(asset+' '+ex.name+': '+String(e.message||e).slice(0,85))}
+          connectionRows.push(ex.name+' / '+asset+': CONNECTED ('+asks.length+' asks, '+bids.length+' bids)');
+        }catch(e){var message=String(e.message||e).slice(0,85);notes.push(asset+' '+ex.name+': '+message);connectionRows.push(ex.name+' / '+asset+': UNAVAILABLE — '+message)}
       })}));
       assets.forEach(function(asset){sizes.forEach(function(size){
         exchanges.forEach(function(buyer){exchanges.forEach(function(seller){
@@ -248,11 +250,15 @@
         })});
       })});
       v61results.sort(function(a,b){return b.net-a.net});
+      var conn=el('v62connections');conn.textContent='';
+      var heading=document.createElement('strong');heading.textContent='Exchange connection diagnostics';conn.appendChild(heading);
+      connectionRows.sort().forEach(function(row){var line=document.createElement('div');line.className='v61muted';line.textContent=row;conn.appendChild(line)});
+      if(!el('mxEnabled').checked){var line=document.createElement('div');line.className='v61muted';line.textContent='MX Global: NOT TESTED — enable its connector test above. Worker support is required.';conn.appendChild(line)}
       renderV61();
       var positives=v61results.filter(function(r){return r.net>0}).length;
       var connected=Object.keys(books).length;
       status.textContent='Scan complete: '+v61results.length+' depth-covered directions; '+positives+
-        ' positive estimates (NOT verified profit). '+connected+'/12 asset/exchange books connected. '+
+        ' positive estimates (NOT verified profit). '+connected+'/'+(assets.length*exchanges.length)+' tested asset/exchange books connected. '+
         (v61results.length?'Best: '+v61results[0].asset+' RM'+v61results[0].size+' '+v61results[0].route+
         ' '+(v61results[0].net>=0?'+':'−')+'RM'+Math.abs(v61results[0].net).toFixed(3)+'. ':'')+
         (notes.length?'Unavailable: '+notes.join('; ')+'. ':'')+'No orders placed.';
@@ -262,6 +268,6 @@
   el('v6go').addEventListener('click',scanAllV6);
   el('v61filter').addEventListener('change',renderV61);
   el('minProfit').addEventListener('change',renderV61);
-  say('V6.1 MAIN SCRIPT INITIALIZED — all-asset scan available.');
+  say('V6.2 MAIN SCRIPT INITIALIZED — all-asset scan available.');
 })();
 </script></body></html>
